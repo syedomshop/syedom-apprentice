@@ -84,10 +84,9 @@ const Progress = () => {
                         <span className="portal-badge-info text-xs">Week {sub.tasks?.week_number}</span>
                         <h3 className="text-sm font-medium text-foreground">{sub.tasks?.title}</h3>
                       </div>
-                      {/* Instructor comment (no AI disclosure) */}
                       {sub.instructor_comment && (
                         <p className="text-xs text-foreground font-medium">
-                          📝 Instructor: {sub.instructor_comment}
+                          📝 Feedback: {sub.instructor_comment}
                         </p>
                       )}
                       {sub.intern_comment && (
@@ -104,7 +103,7 @@ const Progress = () => {
                           <span className="text-xs text-muted-foreground">/100</span>
                         </>
                       ) : (
-                        <span className="portal-badge-warning">Pending</span>
+                        <span className="portal-badge-warning">Under Review</span>
                       )}
                     </div>
                   </div>

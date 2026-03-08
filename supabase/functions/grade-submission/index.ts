@@ -38,8 +38,7 @@ serve(async (req) => {
 
     const { data: task } = await supabase.from("tasks").select("title, description, learning_objective, deliverable").eq("id", task_id).single();
 
-    // Instructor-style prompt — no AI disclosure
-    const prompt = `You are a senior software engineering instructor reviewing a student's project submission. Respond as a human instructor would.
+    const prompt = `You are a senior software engineering instructor reviewing a student's project submission. Respond as a human instructor would — professional, constructive, and encouraging.
 
 Task: ${task?.title || "Unknown"}
 Description: ${task?.description || ""}
@@ -55,7 +54,7 @@ Evaluate based on:
 4. Difficulty and effort level
 5. Best practices followed
 
-ANTI-CHEAT: Check if the project appears copied from common tutorials or shows no original work. Flag if plagiarism suspected.
+Check if the project appears copied from common tutorials or shows no original work.
 
 Return ONLY JSON:
 {
@@ -67,7 +66,7 @@ Return ONLY JSON:
   "plagiarism_flag": boolean
 }
 
-IMPORTANT: The instructor_comment must be ≤100 characters and sound like a real instructor, not AI. Examples: "Solid work, clean structure. Add more tests.", "Good effort but needs better error handling."`;
+The instructor_comment must be ≤100 characters and sound natural. Examples: "Solid work, clean structure. Add more tests.", "Good effort but needs better error handling."`;
 
     const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`, {
       method: "POST",
@@ -83,9 +82,7 @@ IMPORTANT: The instructor_comment must be ≤100 characters and sound like a rea
     const result = JSON.parse(jsonMatch[0]);
     let score = Math.min(100, Math.max(0, Math.round(result.score)));
 
-    // Penalize if repo is invalid
     if (!repoValid && repo_link) score = Math.min(score, 40);
-    // Penalize if plagiarism detected
     if (result.plagiarism_flag) score = Math.max(0, score - 25);
 
     const instructorComment = (result.instructor_comment || "Good submission.").slice(0, 100);
@@ -98,7 +95,7 @@ IMPORTANT: The instructor_comment must be ≤100 characters and sound like a rea
       status: "graded",
     }).eq("intern_id", intern_id).eq("task_id", task_id).order("created_at", { ascending: false }).limit(1);
 
-    // Track AI usage
+    // Track usage
     const today = new Date().toISOString().split("T")[0];
     const { data: usage } = await supabase.from("ai_usage").select("*").eq("date", today).maybeSingle();
     await supabase.from("ai_usage").upsert({ date: today, tokens_used: (usage?.tokens_used || 0) + text.length * 2, api_calls: (usage?.api_calls || 0) + 1 }, { onConflict: "date" });
@@ -113,7 +110,6 @@ IMPORTANT: The instructor_comment must be ≤100 characters and sound like a rea
       const { data: profile } = await supabase.from("intern_profiles").select("email, name, field, intern_id, batch_id").eq("id", intern_id).single();
       const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
 
-      // Get batch number
       let batchNumber = null;
       if (profile?.batch_id) {
         const { data: batch } = await supabase.from("batches").select("batch_number").eq("id", profile.batch_id).single();
@@ -121,7 +117,6 @@ IMPORTANT: The instructor_comment must be ≤100 characters and sound like a rea
       }
 
       if (avg >= 50) {
-        // Issue certificate (payment_status = unpaid until payment)
         const certCode = `SYD-CERT-${Date.now().toString(36).toUpperCase().slice(-6)}`;
         await supabase.from("certificates").insert({
           intern_id,
@@ -134,7 +129,6 @@ IMPORTANT: The instructor_comment must be ≤100 characters and sound like a rea
           payment_status: "unpaid",
         });
 
-        // Send certificate notification email
         if (RESEND_API_KEY && profile) {
           await fetch("https://api.resend.com/emails", {
             method: "POST",
@@ -157,14 +151,13 @@ IMPORTANT: The instructor_comment must be ≤100 characters and sound like a rea
                     <li>👥 Follow <strong>Syedom Labs</strong> on LinkedIn</li>
                     <li>📜 Share your certificate with your network</li>
                   </ul>
-                  <p style="color: #718096; font-size: 12px;">Syedom Labs · CEO: Syed Hasnat Ali · HR: M. Sohaib Ali</p>
+                  <p style="color: #718096; font-size: 12px;">© Syedom Labs. All rights reserved.</p>
                 </div>
               `,
             }),
           });
         }
       } else {
-        // Send rejection email
         if (RESEND_API_KEY && profile) {
           await fetch("https://api.resend.com/emails", {
             method: "POST",
@@ -181,7 +174,7 @@ IMPORTANT: The instructor_comment must be ≤100 characters and sound like a rea
                   <p>You are not eligible for a certificate in this batch. You may reapply in the <strong>next batch</strong>.</p>
                   <p>We encourage you to review the feedback on each submission and improve your skills.</p>
                   <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 20px 0;">
-                  <p style="color: #718096; font-size: 12px;">Syedom Labs · CEO: Syed Hasnat Ali · HR: M. Sohaib Ali</p>
+                  <p style="color: #718096; font-size: 12px;">© Syedom Labs. All rights reserved.</p>
                 </div>
               `,
             }),

@@ -1,7 +1,7 @@
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Rocket, Code, Brain, BarChart3, Smartphone, CheckCircle, ArrowRight, Award, Shield } from "lucide-react";
+import { Code, Brain, BarChart3, Smartphone, CheckCircle, ArrowRight, Shield } from "lucide-react";
 
 const roles = [
   { icon: Code, title: "Web Development Intern", desc: "Build modern web applications with React, Node.js, and more" },
@@ -12,7 +12,7 @@ const roles = [
 
 const steps = [
   { step: "01", title: "Apply Online", desc: "Fill out the application form with your details" },
-  { step: "02", title: "Get Your Offer", desc: "Receive your official offer letter via email within hours" },
+  { step: "02", title: "Get Your Offer", desc: "Receive your official offer letter via email" },
   { step: "03", title: "Complete Tasks", desc: "Work through 8 weeks of real-world projects" },
   { step: "04", title: "Get Certified", desc: "Earn your verifiable certificate upon completion" },
 ];
@@ -24,7 +24,7 @@ const Landing = () => {
       <header className="border-b border-border bg-card/80 backdrop-blur-sm sticky top-0 z-50">
         <div className="container mx-auto flex items-center justify-between h-16 px-4">
           <div className="flex items-center gap-2">
-            <Rocket className="h-6 w-6 text-primary" />
+            <img src="/images/syedom-labs-logo.png" alt="Syedom Labs" className="h-8 w-8 rounded-lg object-cover" />
             <span className="font-semibold text-lg text-foreground">Syedom Labs</span>
           </div>
           <div className="flex items-center gap-3">
@@ -45,7 +45,7 @@ const Landing = () => {
       <section className="py-24 px-4">
         <div className="container mx-auto text-center max-w-3xl">
           <div className="inline-flex items-center gap-2 rounded-full bg-primary/10 px-4 py-1.5 text-sm text-primary font-medium mb-6">
-            <Rocket className="h-4 w-4" /> Now Accepting Applications — Batch Starting Soon
+            <img src="/images/syedom-labs-logo.png" alt="" className="h-4 w-4 rounded" /> Now Accepting Applications — Batch Starting Soon
           </div>
           <h1 className="text-4xl md:text-5xl font-bold text-foreground leading-tight mb-6">
             Launch Your Tech Career with{" "}
@@ -109,13 +109,12 @@ const Landing = () => {
           <h2 className="text-3xl font-bold text-foreground text-center mb-12">Why Syedom Labs?</h2>
           <div className="space-y-4">
             {[
-              "Expert project evaluation with detailed feedback",
+              "Expert project evaluation with detailed feedback from our team",
               "8 weeks of structured, real-world tasks with tutorials",
               "Verifiable completion certificate with unique code",
               "Public portfolio page to showcase your work",
               "GitHub-based submissions — no file uploads needed",
               "3-month batch system — up to 600 interns per batch",
-              "Fully automated — no waiting, no delays",
             ].map((f) => (
               <div key={f} className="flex items-center gap-3 p-4 bg-card rounded-lg border border-border">
                 <CheckCircle className="h-5 w-5 text-success flex-shrink-0" />
@@ -140,11 +139,14 @@ const Landing = () => {
       {/* Footer */}
       <footer className="border-t border-border py-8 px-4">
         <div className="container mx-auto text-center text-sm text-muted-foreground">
+          <div className="flex items-center justify-center gap-2 mb-3">
+            <img src="/images/syedom-labs-logo.png" alt="Syedom Labs" className="h-6 w-6 rounded" />
+            <span className="font-medium text-foreground">Syedom Labs</span>
+          </div>
           <div className="flex items-center justify-center gap-4 mb-2">
             <Link to="/verify" className="hover:text-foreground transition-colors">Verify Certificate</Link>
           </div>
           <p>© {new Date().getFullYear()} Syedom Labs. All rights reserved.</p>
-          <p className="mt-1">CEO: Syed Hasnat Ali · HR: M. Sohaib Ali</p>
         </div>
       </footer>
     </div>

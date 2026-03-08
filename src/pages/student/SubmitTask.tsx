@@ -30,7 +30,6 @@ const SubmitTask = () => {
       .then(({ data }) => setTasks(data || []));
   }, [internProfile]);
 
-  // Validate GitHub repo
   const validateRepo = async (url: string) => {
     if (!url) { setRepoStatus("idle"); return; }
     const match = url.match(/github\.com\/([^\/]+\/[^\/]+)/);
@@ -75,7 +74,7 @@ const SubmitTask = () => {
         body: { repo_link: repoLink, intern_comment: internComment, task_id: taskId, intern_id: internProfile.id },
       }).catch(() => {});
 
-      toast({ title: "Task submitted!", description: "Your instructor will evaluate your work shortly. Check your progress page for results." });
+      toast({ title: "Task submitted!", description: "Your work will be evaluated shortly. Check your progress page for results." });
 
       setTaskId("");
       setRepoLink("");
@@ -96,7 +95,7 @@ const SubmitTask = () => {
       <div className="max-w-2xl space-y-6">
         <div>
           <h1 className="text-2xl font-semibold text-foreground">Submit Task</h1>
-          <p className="text-sm text-muted-foreground mt-1">Submit your GitHub repository for evaluation (scored 0–100)</p>
+          <p className="text-sm text-muted-foreground mt-1">Submit your GitHub repository for evaluation</p>
         </div>
 
         <Card>

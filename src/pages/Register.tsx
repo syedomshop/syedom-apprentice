@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Rocket, Eye, EyeOff } from "lucide-react";
+import { Eye, EyeOff } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/lib/supabaseClient";
 
@@ -35,17 +35,14 @@ const Register = () => {
     setLoading(true);
 
     try {
-      // Check seat limit (600 per batch)
       const { data: seatCheck } = await supabase.rpc("check_seat_available");
       if (!seatCheck) {
         toast({ title: "Applications closed", description: "Current batch is full. You've been added to the waitlist for the next batch.", variant: "destructive" });
-        // Add to waitlist
         await supabase.from("waitlist").insert({ name: form.name, email: form.email, field: form.field });
         setLoading(false);
         return;
       }
 
-      // Sign up
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email: form.email,
         password: form.password,
@@ -61,10 +58,8 @@ const Register = () => {
       startDate.setDate(startDate.getDate() + 7);
       const startDateStr = startDate.toISOString().split("T")[0];
 
-      // Get active batch
       const { data: activeBatch } = await supabase.rpc("get_active_batch");
 
-      // Create intern profile
       const { error: profileError } = await supabase.from("intern_profiles").insert({
         user_id: userId,
         name: form.name,
@@ -79,7 +74,6 @@ const Register = () => {
 
       if (profileError) throw profileError;
 
-      // Assign intern role
       const { error: roleError } = await supabase.from("user_roles").insert({
         user_id: userId,
         role: "intern",
@@ -87,7 +81,6 @@ const Register = () => {
 
       if (roleError) throw roleError;
 
-      // Send confirmation email and queue delayed offer letter
       supabase.functions.invoke("send-confirmation", {
         body: { name: form.name, email: form.email, field: form.field, intern_id: internId },
       }).catch(() => {});
@@ -113,9 +106,7 @@ const Register = () => {
     <div className="min-h-screen flex items-center justify-center bg-background px-4 py-8">
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-primary/10 mb-4">
-            <Rocket className="h-6 w-6 text-primary" />
-          </div>
+          <img src="/images/syedom-labs-logo.png" alt="Syedom Labs" className="h-12 w-12 rounded-xl mx-auto mb-4 object-cover" />
           <h1 className="text-2xl font-semibold text-foreground">Syedom Labs</h1>
           <p className="text-sm text-muted-foreground mt-1">Internship Program</p>
         </div>
