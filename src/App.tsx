@@ -17,6 +17,11 @@ import Notifications from "./pages/student/Notifications";
 import VerifyCertificate from "./pages/VerifyCertificate";
 import Portfolio from "./pages/Portfolio";
 import NotFound from "./pages/NotFound";
+import AdminRoute from "@/components/AdminRoute";
+import AdminDashboard from "./pages/admin/Dashboard";
+import AdminInterns from "./pages/admin/Interns";
+import AdminCertificates from "./pages/admin/Certificates";
+import AdminBatches from "./pages/admin/Batches";
 
 const queryClient = new QueryClient();
 
