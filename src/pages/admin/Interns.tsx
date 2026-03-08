@@ -119,6 +119,23 @@ const AdminInterns = () => {
           </Button>
         </div>
 
+        <Tabs defaultValue="interns" className="w-full">
+          <TabsList>
+            <TabsTrigger value="interns" className="gap-2">
+              <Users className="h-4 w-4" />
+              Interns
+            </TabsTrigger>
+            <TabsTrigger value="limits" className="gap-2">
+              <Settings className="h-4 w-4" />
+              Limits & Caps
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="limits" className="mt-4">
+            <InternLimitsPanel />
+          </TabsContent>
+
+          <TabsContent value="interns" className="mt-4">
         <Card>
           <CardHeader className="pb-3">
             <div className="relative">
