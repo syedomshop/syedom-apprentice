@@ -2,9 +2,10 @@ import { useEffect, useState } from "react";
 import PortalLayout from "@/components/layout/PortalLayout";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Award, Download, Share2, ExternalLink } from "lucide-react";
+import { Award, Download, Share2, ExternalLink, Lock } from "lucide-react";
 import { supabase } from "@/lib/supabaseClient";
 import { useAuth } from "@/contexts/AuthContext";
+import { useToast } from "@/hooks/use-toast";
 
 const Certificate = () => {
   const { internProfile } = useAuth();
@@ -13,6 +14,7 @@ const Certificate = () => {
   const [completedTasks, setCompletedTasks] = useState(0);
   const [certificate, setCertificate] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const { toast } = useToast();
 
   useEffect(() => {
     if (!internProfile) return;
@@ -35,9 +37,22 @@ const Certificate = () => {
   }, [internProfile]);
 
   const eligible = certificate || (avgScore >= 50 && completedTasks >= totalTasks && totalTasks >= 8);
+  const isPaid = certificate?.payment_status === "paid";
   const certCode = certificate?.certificate_code || "";
 
+  const handlePayment = () => {
+    // Open payment link (PKR 50) — in production, integrate with JazzCash/EasyPaisa/Stripe
+    toast({
+      title: "Payment Required — PKR 50",
+      description: "Please send PKR 50 to the payment details shared on your email. Once confirmed, your certificate will be unlocked.",
+    });
+  };
+
   const handlePrint = () => {
+    if (!isPaid) {
+      handlePayment();
+      return;
+    }
     const w = window.open("", "_blank");
     if (!w) return;
     w.document.write(`<html><head><title>Certificate - ${internProfile?.name}</title><style>
@@ -62,7 +77,7 @@ const Certificate = () => {
         <div class="name">${internProfile?.name}</div>
         <p>has successfully completed the <strong>${internProfile?.field}</strong> internship program<br/>
         with an average score of <strong>${avgScore}/100</strong>.</p>
-        <p>Intern ID: ${internProfile?.intern_id} · Duration: 8 Weeks</p>
+        <p>Intern ID: ${internProfile?.intern_id} · Duration: 8 Weeks${certificate?.batch_number ? ` · Batch ${certificate.batch_number}` : ""}</p>
         ${certCode ? `<p class="code">Certificate Code: ${certCode}<br/>Verify at: syedomlabs.com/verify/${certCode}</p>` : ""}
         <div class="sigs">
           <div class="sig">
@@ -103,7 +118,23 @@ const Certificate = () => {
 
         {eligible ? (
           <>
-            <Card id="certificate-card">
+            {/* Payment Gate */}
+            {!isPaid && (
+              <Card className="border-warning/30 bg-warning/5">
+                <CardContent className="p-5 flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <Lock className="h-5 w-5 text-warning" />
+                    <div>
+                      <p className="text-sm font-medium text-foreground">Certificate Locked — PKR 50 Payment Required</p>
+                      <p className="text-xs text-muted-foreground">Complete payment to unlock your certificate download</p>
+                    </div>
+                  </div>
+                  <Button size="sm" onClick={handlePayment}>Pay PKR 50</Button>
+                </CardContent>
+              </Card>
+            )}
+
+            <Card id="certificate-card" className={!isPaid ? "opacity-60 pointer-events-none select-none" : ""}>
               <CardContent className="p-8 text-center space-y-4">
                 <Award className="h-16 w-16 text-primary mx-auto" />
                 <h2 className="text-xl font-bold text-foreground">Certificate of Completion</h2>
@@ -113,7 +144,10 @@ const Certificate = () => {
                   For successfully completing the <strong>{internProfile?.field}</strong> internship program
                   with an average score of <strong>{avgScore}/100</strong>.
                 </p>
-                <p className="text-sm text-muted-foreground">Intern ID: {internProfile?.intern_id} · Duration: 8 Weeks</p>
+                <p className="text-sm text-muted-foreground">
+                  Intern ID: {internProfile?.intern_id} · Duration: 8 Weeks
+                  {certificate?.batch_number && ` · Batch ${certificate.batch_number}`}
+                </p>
                 {certCode && (
                   <p className="text-xs text-primary">Certificate Code: {certCode}</p>
                 )}
@@ -135,8 +169,8 @@ const Certificate = () => {
             </Card>
 
             <div className="flex gap-3">
-              <Button onClick={handlePrint} className="flex-1">
-                <Download className="h-4 w-4 mr-2" /> Download / Print
+              <Button onClick={handlePrint} className="flex-1" disabled={!isPaid}>
+                <Download className="h-4 w-4 mr-2" /> {isPaid ? "Download / Print" : "Pay to Unlock"}
               </Button>
               <Button variant="outline" onClick={shareLinkedIn} className="flex-1">
                 <Share2 className="h-4 w-4 mr-2" /> Share on LinkedIn

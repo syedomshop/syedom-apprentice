@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import PortalLayout from "@/components/layout/PortalLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ListTodo, CheckCircle, Clock, TrendingUp } from "lucide-react";
+import { ListTodo, CheckCircle, Clock, TrendingUp, Linkedin, ExternalLink } from "lucide-react";
 import { supabase } from "@/lib/supabaseClient";
 import { useAuth } from "@/contexts/AuthContext";
 
@@ -40,11 +40,13 @@ const StudentDashboard = () => {
     ? Math.min(8, Math.max(1, Math.ceil((Date.now() - new Date(internProfile.start_date).getTime()) / (7 * 86400000))))
     : 1;
 
+  const eligible = stats.avgScore >= 50 && stats.completed >= 8;
+
   const statCards = [
     { label: "Current Week", value: `${currentWeek} / 8`, icon: Clock, color: "text-primary" },
     { label: "Tasks Completed", value: String(stats.completed), icon: CheckCircle, color: "text-success" },
     { label: "Pending", value: String(stats.pending), icon: ListTodo, color: "text-warning" },
-    { label: "Avg Score", value: `${stats.avgScore}/100`, icon: TrendingUp, color: "text-info" },
+    { label: "Avg Score", value: `${stats.avgScore}/100`, icon: TrendingUp, color: eligible ? "text-success" : "text-info" },
   ];
 
   return (
@@ -68,6 +70,45 @@ const StudentDashboard = () => {
             </div>
           ))}
         </div>
+
+        {/* Certification Eligibility */}
+        <Card className={eligible ? "border-success/30 bg-success/5" : "border-border"}>
+          <CardContent className="p-4 flex items-center gap-3">
+            <CheckCircle className={`h-5 w-5 ${eligible ? "text-success" : "text-muted-foreground"}`} />
+            <div>
+              <p className="text-sm font-medium text-foreground">
+                {eligible ? "🎉 You're eligible for certification!" : "Certificate Eligibility"}
+              </p>
+              <p className="text-xs text-muted-foreground">
+                {eligible
+                  ? "Complete your payment to download your certificate."
+                  : `Complete all 8 tasks with avg score ≥ 50. Current: ${stats.completed}/8 tasks, ${stats.avgScore} avg.`
+                }
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* LinkedIn CTA */}
+        <Card className="border-primary/20 bg-primary/5">
+          <CardContent className="p-4 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <Linkedin className="h-5 w-5 text-primary" />
+              <div>
+                <p className="text-sm font-medium text-foreground">Boost your profile!</p>
+                <p className="text-xs text-muted-foreground">Add this internship to LinkedIn & follow Syedom Labs</p>
+              </div>
+            </div>
+            <a
+              href="https://www.linkedin.com/company/syedom-labs"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-xs text-primary hover:underline flex items-center gap-1"
+            >
+              Follow <ExternalLink className="h-3 w-3" />
+            </a>
+          </CardContent>
+        </Card>
 
         <Card>
           <CardHeader>

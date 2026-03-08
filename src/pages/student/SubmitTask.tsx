@@ -4,7 +4,6 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Upload, CheckCircle, AlertTriangle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
@@ -15,7 +14,7 @@ const SubmitTask = () => {
   const { internProfile } = useAuth();
   const [taskId, setTaskId] = useState("");
   const [repoLink, setRepoLink] = useState("");
-  const [explanation, setExplanation] = useState("");
+  const [internComment, setInternComment] = useState("");
   const [loading, setLoading] = useState(false);
   const [tasks, setTasks] = useState<any[]>([]);
   const [repoStatus, setRepoStatus] = useState<"idle" | "checking" | "valid" | "invalid">("idle");
@@ -54,14 +53,18 @@ const SubmitTask = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!internProfile) return;
+    if (!repoLink) {
+      toast({ title: "GitHub repo required", description: "Please provide your GitHub repository link.", variant: "destructive" });
+      return;
+    }
     setLoading(true);
 
     try {
       const { error } = await supabase.from("submissions").insert({
         intern_id: internProfile.id,
         task_id: taskId,
-        repo_link: repoLink || null,
-        explanation,
+        repo_link: repoLink,
+        intern_comment: internComment || null,
       });
 
       if (error) throw error;
@@ -69,14 +72,14 @@ const SubmitTask = () => {
       await supabase.from("intern_tasks").update({ status: "completed" }).eq("intern_id", internProfile.id).eq("task_id", taskId);
 
       supabase.functions.invoke("grade-submission", {
-        body: { repo_link: repoLink, explanation, task_id: taskId, intern_id: internProfile.id },
+        body: { repo_link: repoLink, intern_comment: internComment, task_id: taskId, intern_id: internProfile.id },
       }).catch(() => {});
 
-      toast({ title: "Task submitted!", description: "AI evaluation in progress. Check your progress page for results." });
+      toast({ title: "Task submitted!", description: "Your instructor will evaluate your work shortly. Check your progress page for results." });
 
       setTaskId("");
       setRepoLink("");
-      setExplanation("");
+      setInternComment("");
       setRepoStatus("idle");
 
       const { data: refreshed } = await supabase.from("intern_tasks").select("*, tasks(*)").eq("intern_id", internProfile.id).in("status", ["pending", "in_progress"]);
@@ -93,7 +96,7 @@ const SubmitTask = () => {
       <div className="max-w-2xl space-y-6">
         <div>
           <h1 className="text-2xl font-semibold text-foreground">Submit Task</h1>
-          <p className="text-sm text-muted-foreground mt-1">Submit your work for AI evaluation (scored 0–100)</p>
+          <p className="text-sm text-muted-foreground mt-1">Submit your GitHub repository for evaluation (scored 0–100)</p>
         </div>
 
         <Card>
@@ -113,7 +116,7 @@ const SubmitTask = () => {
                 </Select>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="repo">GitHub Repository Link</Label>
+                <Label htmlFor="repo">GitHub Repository Link <span className="text-destructive">*</span></Label>
                 <div className="relative">
                   <Input
                     id="repo"
@@ -121,6 +124,7 @@ const SubmitTask = () => {
                     placeholder="https://github.com/username/repo"
                     value={repoLink}
                     onChange={(e) => setRepoLink(e.target.value)}
+                    required
                   />
                   {repoStatus === "valid" && <CheckCircle className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-success" />}
                   {repoStatus === "invalid" && <AlertTriangle className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-destructive" />}
@@ -133,10 +137,19 @@ const SubmitTask = () => {
                 )}
               </div>
               <div className="space-y-2">
-                <Label htmlFor="explanation">Report / Explanation</Label>
-                <Textarea id="explanation" placeholder="Describe your approach, what you built, and what you learned..." value={explanation} onChange={(e) => setExplanation(e.target.value)} rows={5} required />
+                <Label htmlFor="comment">
+                  Comment <span className="text-muted-foreground">(optional, max 100 chars)</span>
+                </Label>
+                <Input
+                  id="comment"
+                  placeholder="Brief note about your approach..."
+                  value={internComment}
+                  onChange={(e) => setInternComment(e.target.value.slice(0, 100))}
+                  maxLength={100}
+                />
+                <p className="text-xs text-muted-foreground text-right">{internComment.length}/100</p>
               </div>
-              <Button type="submit" disabled={loading || tasks.length === 0} className="w-full">
+              <Button type="submit" disabled={loading || tasks.length === 0 || !repoLink} className="w-full">
                 <Upload className="h-4 w-4 mr-2" />
                 {loading ? "Submitting..." : "Submit Task"}
               </Button>

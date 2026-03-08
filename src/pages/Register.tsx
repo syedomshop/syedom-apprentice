@@ -23,6 +23,7 @@ const Register = () => {
     email: "",
     password: "",
     field: "",
+    github_username: "",
   });
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -34,10 +35,12 @@ const Register = () => {
     setLoading(true);
 
     try {
-      // Check seat limit
+      // Check seat limit (600 per batch)
       const { data: seatCheck } = await supabase.rpc("check_seat_available");
       if (!seatCheck) {
-        toast({ title: "Applications closed", description: "All seats are currently filled. Please try again later.", variant: "destructive" });
+        toast({ title: "Applications closed", description: "Current batch is full. You've been added to the waitlist for the next batch.", variant: "destructive" });
+        // Add to waitlist
+        await supabase.from("waitlist").insert({ name: form.name, email: form.email, field: form.field });
         setLoading(false);
         return;
       }
@@ -58,6 +61,9 @@ const Register = () => {
       startDate.setDate(startDate.getDate() + 7);
       const startDateStr = startDate.toISOString().split("T")[0];
 
+      // Get active batch
+      const { data: activeBatch } = await supabase.rpc("get_active_batch");
+
       // Create intern profile
       const { error: profileError } = await supabase.from("intern_profiles").insert({
         user_id: userId,
@@ -66,6 +72,8 @@ const Register = () => {
         email: form.email,
         intern_id: internId,
         field: form.field,
+        github_username: form.github_username || null,
+        batch_id: activeBatch || null,
         start_date: startDateStr,
       });
 
@@ -150,6 +158,10 @@ const Register = () => {
                     ))}
                   </SelectContent>
                 </Select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="github">GitHub Username <span className="text-muted-foreground">(optional)</span></Label>
+                <Input id="github" placeholder="johndoe" value={form.github_username} onChange={(e) => updateField("github_username", e.target.value.replace(/[^a-zA-Z0-9_-]/g, ""))} />
               </div>
               <Button type="submit" className="w-full" disabled={loading}>
                 {loading ? "Submitting..." : "Submit Application"}
