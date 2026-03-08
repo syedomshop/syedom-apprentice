@@ -26,6 +26,8 @@ import AdminTasks from "./pages/admin/Tasks";
 import AdminApiUsage from "./pages/admin/ApiUsage";
 import AdminRevenue from "./pages/admin/Revenue";
 import AdminLogs from "./pages/admin/Logs";
+import AdminAutomations from "./pages/admin/Automations";
+import AdminNotificationsPage from "./pages/admin/Notifications";
 
 const queryClient = new QueryClient();
 
