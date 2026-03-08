@@ -1,19 +1,11 @@
+import { useEffect, useState } from "react";
 import PortalLayout from "@/components/layout/PortalLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Activity, Zap, AlertTriangle, Shield } from "lucide-react";
+import { supabase } from "@/lib/supabaseClient";
 
-const usageData = [
-  { date: "2026-03-07", tokens: 4200, calls: 38 },
-  { date: "2026-03-06", tokens: 5800, calls: 52 },
-  { date: "2026-03-05", tokens: 3900, calls: 35 },
-  { date: "2026-03-04", tokens: 6100, calls: 55 },
-  { date: "2026-03-03", tokens: 4500, calls: 41 },
-];
-
-const tokenUsagePercent = 62;
 const dailyLimit = 10000;
-const tokensUsedToday = 6200;
 
 const getMode = (percent: number) => {
   if (percent > 95) return { label: "Critical", color: "text-destructive", bg: "portal-badge-destructive", icon: AlertTriangle };
@@ -22,6 +14,27 @@ const getMode = (percent: number) => {
 };
 
 const AIUsage = () => {
+  const [usageData, setUsageData] = useState<any[]>([]);
+  const [todayUsage, setTodayUsage] = useState({ tokens: 0, calls: 0 });
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetch = async () => {
+      const { data } = await supabase
+        .from("ai_usage")
+        .select("*")
+        .order("date", { ascending: false })
+        .limit(7);
+      setUsageData(data || []);
+
+      const today = data?.find((d) => d.date === new Date().toISOString().split("T")[0]);
+      setTodayUsage({ tokens: today?.tokens_used || 0, calls: today?.api_calls || 0 });
+      setLoading(false);
+    };
+    fetch();
+  }, []);
+
+  const tokenUsagePercent = Math.round((todayUsage.tokens / dailyLimit) * 100);
   const mode = getMode(tokenUsagePercent);
 
   return (
@@ -32,7 +45,6 @@ const AIUsage = () => {
           <p className="text-sm text-muted-foreground mt-1">Track Gemini API consumption and safety status</p>
         </div>
 
-        {/* Status Cards */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div className="portal-stat">
             <div className="flex items-center justify-between">
@@ -49,7 +61,7 @@ const AIUsage = () => {
               <span className="text-sm text-muted-foreground">Tokens Used Today</span>
               <Zap className="h-4 w-4 text-warning" />
             </div>
-            <span className="text-2xl font-semibold text-foreground">{tokensUsedToday.toLocaleString()}</span>
+            <span className="text-2xl font-semibold text-foreground">{todayUsage.tokens.toLocaleString()}</span>
             <div className="space-y-1">
               <Progress value={tokenUsagePercent} className="h-2" />
               <span className="text-xs text-muted-foreground">{tokenUsagePercent}% of {dailyLimit.toLocaleString()} limit</span>
@@ -60,37 +72,39 @@ const AIUsage = () => {
               <span className="text-sm text-muted-foreground">API Calls Today</span>
               <Activity className="h-4 w-4 text-info" />
             </div>
-            <span className="text-2xl font-semibold text-foreground">{usageData[0].calls}</span>
+            <span className="text-2xl font-semibold text-foreground">{todayUsage.calls}</span>
           </div>
         </div>
 
-        {/* Usage History */}
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">Usage History (Last 5 Days)</CardTitle>
+            <CardTitle className="text-base">Usage History</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="space-y-3">
-              {usageData.map((day) => {
-                const pct = Math.round((day.tokens / dailyLimit) * 100);
-                const dayMode = getMode(pct);
-                return (
-                  <div key={day.date} className="flex items-center gap-4 p-3 rounded-lg border border-border">
-                    <span className="text-sm text-muted-foreground w-24">{day.date}</span>
-                    <div className="flex-1">
-                      <Progress value={pct} className="h-2" />
+            {loading ? (
+              <p className="text-sm text-muted-foreground">Loading...</p>
+            ) : usageData.length === 0 ? (
+              <p className="text-sm text-muted-foreground">No usage data yet.</p>
+            ) : (
+              <div className="space-y-3">
+                {usageData.map((day) => {
+                  const pct = Math.round((day.tokens_used / dailyLimit) * 100);
+                  const dayMode = getMode(pct);
+                  return (
+                    <div key={day.date} className="flex items-center gap-4 p-3 rounded-lg border border-border">
+                      <span className="text-sm text-muted-foreground w-24">{day.date}</span>
+                      <div className="flex-1"><Progress value={pct} className="h-2" /></div>
+                      <span className="text-sm font-medium text-foreground w-20 text-right">{day.tokens_used.toLocaleString()}</span>
+                      <span className="text-xs text-muted-foreground w-16 text-right">{day.api_calls} calls</span>
+                      <span className={dayMode.bg}>{dayMode.label}</span>
                     </div>
-                    <span className="text-sm font-medium text-foreground w-20 text-right">{day.tokens.toLocaleString()}</span>
-                    <span className="text-xs text-muted-foreground w-16 text-right">{day.calls} calls</span>
-                    <span className={dayMode.bg}>{dayMode.label}</span>
-                  </div>
-                );
-              })}
-            </div>
+                  );
+                })}
+              </div>
+            )}
           </CardContent>
         </Card>
 
-        {/* Safety Rules */}
         <Card>
           <CardHeader>
             <CardTitle className="text-base">AI Token Safety Rules</CardTitle>
@@ -115,7 +129,7 @@ const AIUsage = () => {
                 <AlertTriangle className="h-4 w-4 text-destructive mt-0.5" />
                 <div>
                   <span className="font-medium text-foreground">Critical Mode</span>
-                  <span className="text-muted-foreground"> — &gt;95% usage. Non-critical AI tasks paused. Only task generation and grading remain active.</span>
+                  <span className="text-muted-foreground"> — &gt;95% usage. Non-critical AI tasks paused.</span>
                 </div>
               </div>
             </div>

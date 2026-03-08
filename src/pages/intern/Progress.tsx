@@ -1,17 +1,49 @@
+import { useEffect, useState } from "react";
 import PortalLayout from "@/components/layout/PortalLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
-
-const submissions = [
-  { task: "Create a Todo App", score: 9, feedback: "Excellent implementation with clean code structure.", date: "2026-03-05" },
-  { task: "Build a REST API Client", score: 7, feedback: "Good work. Consider adding error handling for edge cases.", date: "2026-03-04" },
-  { task: "CSS Grid Layout Challenge", score: 8, feedback: "Well structured layout. Mobile responsiveness could be improved.", date: "2026-03-03" },
-  { task: "React State Management", score: 10, feedback: "Perfect! Great use of context and custom hooks.", date: "2026-03-02" },
-];
+import { supabase } from "@/lib/supabaseClient";
+import { useAuth } from "@/contexts/AuthContext";
 
 const InternProgress = () => {
-  const avgScore = (submissions.reduce((a, b) => a + b.score, 0) / submissions.length).toFixed(1);
-  const completionRate = 75;
+  const { internProfile } = useAuth();
+  const [submissions, setSubmissions] = useState<any[]>([]);
+  const [totalTasks, setTotalTasks] = useState(0);
+  const [completedTasks, setCompletedTasks] = useState(0);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!internProfile) return;
+    const fetch = async () => {
+      const { data: subs } = await supabase
+        .from("submissions")
+        .select("*, tasks(title)")
+        .eq("intern_id", internProfile.id)
+        .order("created_at", { ascending: false });
+      setSubmissions(subs || []);
+
+      const { count: total } = await supabase
+        .from("intern_tasks")
+        .select("*", { count: "exact", head: true })
+        .eq("intern_id", internProfile.id);
+
+      const { count: completed } = await supabase
+        .from("intern_tasks")
+        .select("*", { count: "exact", head: true })
+        .eq("intern_id", internProfile.id)
+        .eq("status", "completed");
+
+      setTotalTasks(total || 0);
+      setCompletedTasks(completed || 0);
+      setLoading(false);
+    };
+    fetch();
+  }, [internProfile]);
+
+  const avgScore = submissions.length > 0
+    ? (submissions.filter(s => s.ai_score != null).reduce((a, b) => a + (b.ai_score || 0), 0) / (submissions.filter(s => s.ai_score != null).length || 1)).toFixed(1)
+    : "0";
+  const completionRate = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
 
   return (
     <PortalLayout role="intern">
@@ -21,7 +53,6 @@ const InternProgress = () => {
           <p className="text-sm text-muted-foreground mt-1">Track your internship progress and scores</p>
         </div>
 
-        {/* Overview */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div className="portal-stat">
             <span className="text-sm text-muted-foreground">Average Score</span>
@@ -29,7 +60,7 @@ const InternProgress = () => {
           </div>
           <div className="portal-stat">
             <span className="text-sm text-muted-foreground">Tasks Completed</span>
-            <span className="text-3xl font-semibold text-foreground">{submissions.length}</span>
+            <span className="text-3xl font-semibold text-foreground">{completedTasks}</span>
           </div>
           <div className="portal-stat">
             <span className="text-sm text-muted-foreground">Completion Rate</span>
@@ -40,29 +71,40 @@ const InternProgress = () => {
           </div>
         </div>
 
-        {/* Submission History */}
         <Card>
           <CardHeader>
             <CardTitle className="text-base">Submission History</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="space-y-3">
-              {submissions.map((sub, i) => (
-                <div key={i} className="flex items-start justify-between p-4 rounded-lg border border-border">
-                  <div className="space-y-1">
-                    <h3 className="text-sm font-medium text-foreground">{sub.task}</h3>
-                    <p className="text-xs text-muted-foreground">{sub.feedback}</p>
-                    <span className="text-xs text-muted-foreground">{sub.date}</span>
+            {loading ? (
+              <p className="text-sm text-muted-foreground">Loading...</p>
+            ) : submissions.length === 0 ? (
+              <p className="text-sm text-muted-foreground">No submissions yet.</p>
+            ) : (
+              <div className="space-y-3">
+                {submissions.map((sub) => (
+                  <div key={sub.id} className="flex items-start justify-between p-4 rounded-lg border border-border">
+                    <div className="space-y-1">
+                      <h3 className="text-sm font-medium text-foreground">{sub.tasks?.title}</h3>
+                      <p className="text-xs text-muted-foreground">{sub.ai_feedback || "Awaiting AI review..."}</p>
+                      <span className="text-xs text-muted-foreground">{new Date(sub.created_at).toLocaleDateString()}</span>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      {sub.ai_score != null ? (
+                        <>
+                          <span className={`text-lg font-semibold ${sub.ai_score >= 8 ? "text-success" : sub.ai_score >= 6 ? "text-warning" : "text-destructive"}`}>
+                            {sub.ai_score}
+                          </span>
+                          <span className="text-xs text-muted-foreground">/10</span>
+                        </>
+                      ) : (
+                        <span className="portal-badge-warning">Pending</span>
+                      )}
+                    </div>
                   </div>
-                  <div className="flex items-center gap-1">
-                    <span className={`text-lg font-semibold ${sub.score >= 8 ? "text-success" : sub.score >= 6 ? "text-warning" : "text-destructive"}`}>
-                      {sub.score}
-                    </span>
-                    <span className="text-xs text-muted-foreground">/10</span>
-                  </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>

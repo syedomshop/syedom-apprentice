@@ -6,6 +6,8 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Bot, Eye, EyeOff } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/lib/supabaseClient";
+import { useAuth } from "@/contexts/AuthContext";
 
 const Login = () => {
   const [email, setEmail] = useState("");
@@ -14,26 +16,52 @@ const Login = () => {
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { role } = useAuth();
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
 
-    // Mock login - will be replaced with real auth
-    setTimeout(() => {
-      if (email === "admin@syedom.com") {
-        navigate("/admin/dashboard");
-      } else {
-        navigate("/intern/dashboard");
-      }
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+
+    if (error) {
+      toast({ title: "Login failed", description: error.message, variant: "destructive" });
       setLoading(false);
-    }, 800);
+      return;
+    }
+
+    // Check if intern is active
+    const { data: profile } = await supabase
+      .from("intern_profiles")
+      .select("status")
+      .eq("user_id", data.user.id)
+      .maybeSingle();
+
+    if (profile && profile.status !== "active") {
+      await supabase.auth.signOut();
+      toast({ title: "Access denied", description: "Your internship has been completed or removed.", variant: "destructive" });
+      setLoading(false);
+      return;
+    }
+
+    // Check role for redirect
+    const { data: roles } = await supabase
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", data.user.id);
+
+    const userRole = roles?.[0]?.role;
+    if (userRole === "admin") {
+      navigate("/admin/dashboard");
+    } else {
+      navigate("/intern/dashboard");
+    }
+    setLoading(false);
   };
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-background px-4">
       <div className="w-full max-w-md">
-        {/* Header */}
         <div className="text-center mb-8">
           <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-primary/10 mb-4">
             <Bot className="h-6 w-6 text-primary" />
