@@ -32,25 +32,54 @@ const Register = () => {
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (loading) return; // prevent double submit
     setLoading(true);
 
     try {
+      // 1. Check seat availability
       const { data: seatCheck } = await supabase.rpc("check_seat_available");
       if (!seatCheck) {
-        toast({ title: "Applications closed", description: "This batch is full. You've been added to the waitlist for the next batch.", variant: "destructive" });
+        toast({ title: "Applications closed", description: "This batch is full. You've been added to the waitlist.", variant: "destructive" });
         await supabase.from("waitlist").insert({ name: form.name, email: form.email, field: form.field });
         setLoading(false);
         return;
       }
 
+      // 2. Sign up (disable auto-confirm email — we send our own via Resend)
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email: form.email,
         password: form.password,
-        options: { emailRedirectTo: window.location.origin },
+        options: {
+          emailRedirectTo: window.location.origin,
+          data: { full_name: form.name },
+        },
       });
 
-      if (authError) throw authError;
-      if (!authData.user) throw new Error("Signup failed");
+      if (authError) {
+        // Friendly message for rate limit
+        if (authError.message?.toLowerCase().includes("rate limit") || authError.status === 429) {
+          toast({
+            title: "Too many attempts",
+            description: "Please wait a few minutes before trying again.",
+            variant: "destructive",
+          });
+          setLoading(false);
+          return;
+        }
+        // Handle "user already exists" — they may have signed up but profile insert failed
+        if (authError.message?.toLowerCase().includes("already registered") || authError.message?.toLowerCase().includes("already been registered")) {
+          toast({
+            title: "Account exists",
+            description: "This email is already registered. Try signing in instead.",
+            variant: "destructive",
+          });
+          setLoading(false);
+          return;
+        }
+        throw authError;
+      }
+
+      if (!authData.user) throw new Error("Signup failed — please try again");
 
       const userId = authData.user.id;
       const internId = `SL-${Date.now().toString(36).toUpperCase().slice(-6)}`;
@@ -58,8 +87,10 @@ const Register = () => {
       startDate.setDate(startDate.getDate() + 7);
       const startDateStr = startDate.toISOString().split("T")[0];
 
+      // 3. Get active batch
       const { data: activeBatch } = await supabase.rpc("get_active_batch");
 
+      // 4. Create intern profile
       const { error: profileError } = await supabase.from("intern_profiles").insert({
         user_id: userId,
         name: form.name,
@@ -72,15 +103,27 @@ const Register = () => {
         start_date: startDateStr,
       });
 
-      if (profileError) throw profileError;
+      if (profileError) {
+        // If profile already exists (duplicate username/email), give helpful message
+        if (profileError.message?.includes("duplicate") || profileError.message?.includes("unique")) {
+          toast({
+            title: "Profile conflict",
+            description: "This username or email is already taken. Try a different one.",
+            variant: "destructive",
+          });
+          setLoading(false);
+          return;
+        }
+        throw profileError;
+      }
 
-      const { error: roleError } = await supabase.from("user_roles").insert({
+      // 5. Assign role
+      await supabase.from("user_roles").insert({
         user_id: userId,
         role: "intern",
       });
 
-      if (roleError) throw roleError;
-
+      // 6. Send confirmation email (fire-and-forget)
       supabase.functions.invoke("send-confirmation", {
         body: { name: form.name, email: form.email, field: form.field, intern_id: internId },
       }).catch(() => {});
@@ -92,7 +135,12 @@ const Register = () => {
 
       navigate("/dashboard");
     } catch (err: any) {
-      toast({ title: "Registration failed", description: err.message, variant: "destructive" });
+      const msg = err.message?.toLowerCase?.() || "";
+      if (msg.includes("rate limit") || msg.includes("too many")) {
+        toast({ title: "Too many attempts", description: "Please wait a few minutes before trying again.", variant: "destructive" });
+      } else {
+        toast({ title: "Registration failed", description: err.message, variant: "destructive" });
+      }
     } finally {
       setLoading(false);
     }
