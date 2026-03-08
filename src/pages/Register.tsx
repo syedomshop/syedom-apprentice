@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Eye, EyeOff } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/lib/supabaseClient";
+import ResumeUploader from "@/components/ResumeUploader";
 
 const ROLES = [
   "Web Development",
@@ -24,6 +25,7 @@ const Register = () => {
     password: "",
     field: "",
     github_username: "",
+    resume_text: "",
   });
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -200,8 +202,9 @@ const Register = () => {
               </div>
               <div className="space-y-2">
                 <Label htmlFor="github">GitHub Username <span className="text-muted-foreground">(optional)</span></Label>
-                <Input id="github" placeholder="johndoe" value={form.github_username} onChange={(e) => updateField("github_username", e.target.value.replace(/[^a-zA-Z0-9_-]/g, ""))} />
+              <Input id="github" placeholder="johndoe" value={form.github_username} onChange={(e) => updateField("github_username", e.target.value.replace(/[^a-zA-Z0-9_-]/g, ""))} />
               </div>
+              <ResumeUploader onExtracted={(text) => updateField("resume_text", text)} />
               <Button type="submit" className="w-full" disabled={loading}>
                 {loading ? "Submitting..." : "Submit Application"}
               </Button>
