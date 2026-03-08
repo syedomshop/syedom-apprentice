@@ -5,18 +5,24 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Bot, Eye, EyeOff } from "lucide-react";
+import { Rocket, Eye, EyeOff } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/lib/supabaseClient";
+
+const ROLES = [
+  "Web Development",
+  "Python / Backend",
+  "Data Science",
+  "Flutter Developer",
+];
 
 const Register = () => {
   const [form, setForm] = useState({
     name: "",
+    username: "",
     email: "",
     password: "",
-    university: "",
     field: "",
-    phone: "",
   });
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -31,11 +37,7 @@ const Register = () => {
       // Check seat limit
       const { data: seatCheck } = await supabase.rpc("check_seat_available");
       if (!seatCheck) {
-        toast({
-          title: "Applications closed",
-          description: "Limited seats filled. No new registrations at this time.",
-          variant: "destructive",
-        });
+        toast({ title: "Applications closed", description: "All seats are currently filled. Please try again later.", variant: "destructive" });
         setLoading(false);
         return;
       }
@@ -51,16 +53,20 @@ const Register = () => {
       if (!authData.user) throw new Error("Signup failed");
 
       const userId = authData.user.id;
-      const internId = form.phone.slice(-4);
+      const internId = `SL-${Date.now().toString(36).toUpperCase().slice(-6)}`;
+      const startDate = new Date();
+      startDate.setDate(startDate.getDate() + 7);
+      const startDateStr = startDate.toISOString().split("T")[0];
 
       // Create intern profile
       const { error: profileError } = await supabase.from("intern_profiles").insert({
         user_id: userId,
         name: form.name,
-        phone: form.phone,
+        username: form.username,
+        email: form.email,
         intern_id: internId,
-        university: form.university,
         field: form.field,
+        start_date: startDateStr,
       });
 
       if (profileError) throw profileError;
@@ -73,17 +79,17 @@ const Register = () => {
 
       if (roleError) throw roleError;
 
-      // Trigger offer letter edge function (fire and forget)
-      supabase.functions.invoke("send-offer-letter", {
+      // Send confirmation email and queue delayed offer letter
+      supabase.functions.invoke("send-confirmation", {
         body: { name: form.name, email: form.email, field: form.field, intern_id: internId },
       }).catch(() => {});
 
       toast({
-        title: "Registration successful",
-        description: `Welcome to Syedom Labs! Your Intern ID is ${internId}. Check your email for the offer letter.`,
+        title: "Application submitted!",
+        description: `Your Intern ID is ${internId}. Check your email — your offer letter will arrive shortly.`,
       });
 
-      navigate("/intern/dashboard");
+      navigate("/dashboard");
     } catch (err: any) {
       toast({ title: "Registration failed", description: err.message, variant: "destructive" });
     } finally {
@@ -100,16 +106,16 @@ const Register = () => {
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
           <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-primary/10 mb-4">
-            <Bot className="h-6 w-6 text-primary" />
+            <Rocket className="h-6 w-6 text-primary" />
           </div>
           <h1 className="text-2xl font-semibold text-foreground">Syedom Labs</h1>
-          <p className="text-sm text-muted-foreground mt-1">Internee Portal</p>
+          <p className="text-sm text-muted-foreground mt-1">Internship Program</p>
         </div>
 
         <Card>
           <CardHeader>
-            <CardTitle className="text-lg">Create account</CardTitle>
-            <CardDescription>Register as a new internee</CardDescription>
+            <CardTitle className="text-lg">Apply for Internship</CardTitle>
+            <CardDescription>Fill in your details to get started</CardDescription>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleRegister} className="space-y-4">
@@ -118,12 +124,12 @@ const Register = () => {
                 <Input id="name" placeholder="John Doe" value={form.name} onChange={(e) => updateField("name", e.target.value)} required />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
-                <Input id="email" type="email" placeholder="you@example.com" value={form.email} onChange={(e) => updateField("email", e.target.value)} required />
+                <Label htmlFor="username">Username</Label>
+                <Input id="username" placeholder="johndoe" value={form.username} onChange={(e) => updateField("username", e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ""))} required minLength={3} />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="phone">Phone Number</Label>
-                <Input id="phone" type="tel" placeholder="03051234567" value={form.phone} onChange={(e) => updateField("phone", e.target.value)} required minLength={11} />
+                <Label htmlFor="email">Email</Label>
+                <Input id="email" type="email" placeholder="you@example.com" value={form.email} onChange={(e) => updateField("email", e.target.value)} required />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="password">Password</Label>
@@ -135,24 +141,18 @@ const Register = () => {
                 </div>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="university">University / College</Label>
-                <Input id="university" placeholder="Your university name" value={form.university} onChange={(e) => updateField("university", e.target.value)} required />
-              </div>
-              <div className="space-y-2">
-                <Label>Internship Field</Label>
+                <Label>Internship Role</Label>
                 <Select value={form.field} onValueChange={(v) => updateField("field", v)} required>
-                  <SelectTrigger><SelectValue placeholder="Select field" /></SelectTrigger>
+                  <SelectTrigger><SelectValue placeholder="Select your role" /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="Web Development">Web Development</SelectItem>
-                    <SelectItem value="AI / Machine Learning">AI / Machine Learning</SelectItem>
-                    <SelectItem value="Mobile Development">Mobile Development</SelectItem>
-                    <SelectItem value="Data Science">Data Science</SelectItem>
-                    <SelectItem value="UI/UX Design">UI/UX Design</SelectItem>
+                    {ROLES.map((r) => (
+                      <SelectItem key={r} value={r}>{r}</SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
               <Button type="submit" className="w-full" disabled={loading}>
-                {loading ? "Creating account..." : "Register"}
+                {loading ? "Submitting..." : "Submit Application"}
               </Button>
             </form>
             <p className="text-sm text-center text-muted-foreground mt-4">

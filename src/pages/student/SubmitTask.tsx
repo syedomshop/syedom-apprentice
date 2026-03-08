@@ -22,7 +22,6 @@ const SubmitTask = () => {
 
   useEffect(() => {
     if (!internProfile) return;
-    // Fetch non-completed assigned tasks
     supabase
       .from("intern_tasks")
       .select("*, tasks(*)")
@@ -37,11 +36,6 @@ const SubmitTask = () => {
     setLoading(true);
 
     try {
-      // Find the intern_task to get the actual task_id
-      const internTask = tasks.find((t) => t.task_id === taskId);
-      if (!internTask) throw new Error("Task not found");
-
-      // Create submission
       const { error } = await supabase.from("submissions").insert({
         intern_id: internProfile.id,
         task_id: taskId,
@@ -51,32 +45,20 @@ const SubmitTask = () => {
 
       if (error) throw error;
 
-      // Update intern_task status
-      await supabase
-        .from("intern_tasks")
-        .update({ status: "completed" })
-        .eq("intern_id", internProfile.id)
-        .eq("task_id", taskId);
+      await supabase.from("intern_tasks").update({ status: "completed" }).eq("intern_id", internProfile.id).eq("task_id", taskId);
 
-      // Trigger AI grading (fire and forget)
+      // Trigger AI grading
       supabase.functions.invoke("grade-submission", {
         body: { repo_link: repoLink, explanation, task_id: taskId, intern_id: internProfile.id },
       }).catch(() => {});
 
-      toast({
-        title: "Task submitted",
-        description: "Your submission is being reviewed by AI. Check back soon for your score.",
-      });
+      toast({ title: "Task submitted!", description: "AI evaluation in progress. Check your progress page for results." });
 
       setTaskId("");
       setRepoLink("");
       setExplanation("");
-      // Refresh tasks
-      const { data: refreshed } = await supabase
-        .from("intern_tasks")
-        .select("*, tasks(*)")
-        .eq("intern_id", internProfile.id)
-        .in("status", ["pending", "in_progress"]);
+
+      const { data: refreshed } = await supabase.from("intern_tasks").select("*, tasks(*)").eq("intern_id", internProfile.id).in("status", ["pending", "in_progress"]);
       setTasks(refreshed || []);
     } catch (err: any) {
       toast({ title: "Submission failed", description: err.message, variant: "destructive" });
@@ -86,11 +68,11 @@ const SubmitTask = () => {
   };
 
   return (
-    <PortalLayout role="intern">
+    <PortalLayout>
       <div className="max-w-2xl space-y-6">
         <div>
           <h1 className="text-2xl font-semibold text-foreground">Submit Task</h1>
-          <p className="text-sm text-muted-foreground mt-1">Submit your completed work for AI grading</p>
+          <p className="text-sm text-muted-foreground mt-1">Submit your work for AI evaluation (scored 0–100)</p>
         </div>
 
         <Card>
@@ -103,7 +85,7 @@ const SubmitTask = () => {
                   <SelectContent>
                     {tasks.map((t) => (
                       <SelectItem key={t.task_id} value={t.task_id}>
-                        {t.tasks?.title}
+                        Week {t.tasks?.week_number}: {t.tasks?.title}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -111,11 +93,11 @@ const SubmitTask = () => {
               </div>
               <div className="space-y-2">
                 <Label htmlFor="repo">GitHub Repository Link</Label>
-                <Input id="repo" type="url" placeholder="https://github.com/username/repo" value={repoLink} onChange={(e) => setRepoLink(e.target.value)} required />
+                <Input id="repo" type="url" placeholder="https://github.com/username/repo" value={repoLink} onChange={(e) => setRepoLink(e.target.value)} />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="explanation">Brief Explanation</Label>
-                <Textarea id="explanation" placeholder="Describe your approach and what you learned..." value={explanation} onChange={(e) => setExplanation(e.target.value)} rows={4} required />
+                <Label htmlFor="explanation">Report / Explanation</Label>
+                <Textarea id="explanation" placeholder="Describe your approach, what you built, and what you learned..." value={explanation} onChange={(e) => setExplanation(e.target.value)} rows={5} required />
               </div>
               <Button type="submit" disabled={loading || tasks.length === 0} className="w-full">
                 <Upload className="h-4 w-4 mr-2" />

@@ -1,36 +1,21 @@
 import { ReactNode } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import {
-  LayoutDashboard, ListTodo, Upload, TrendingUp,
-  Users, Database, Activity, LogOut, Bot,
-} from "lucide-react";
+import { LayoutDashboard, ListTodo, Upload, TrendingUp, Award, LogOut, Rocket } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
 
-interface PortalLayoutProps {
-  children: ReactNode;
-  role: "intern" | "admin";
-}
-
-const internNav = [
-  { label: "Dashboard", icon: LayoutDashboard, path: "/intern/dashboard" },
-  { label: "Tasks", icon: ListTodo, path: "/intern/tasks" },
-  { label: "Submit Task", icon: Upload, path: "/intern/submit" },
-  { label: "Progress", icon: TrendingUp, path: "/intern/progress" },
+const navItems = [
+  { label: "Dashboard", icon: LayoutDashboard, path: "/dashboard" },
+  { label: "Tasks", icon: ListTodo, path: "/tasks" },
+  { label: "Submit Task", icon: Upload, path: "/submit" },
+  { label: "Progress", icon: TrendingUp, path: "/progress" },
+  { label: "Certificate", icon: Award, path: "/certificate" },
 ];
 
-const adminNav = [
-  { label: "Dashboard", icon: LayoutDashboard, path: "/admin/dashboard" },
-  { label: "Intern Management", icon: Users, path: "/admin/interns" },
-  { label: "Task Pool", icon: Database, path: "/admin/tasks" },
-  { label: "AI Usage", icon: Activity, path: "/admin/ai-usage" },
-];
-
-const PortalLayout = ({ children, role }: PortalLayoutProps) => {
+const PortalLayout = ({ children }: { children: ReactNode }) => {
   const location = useLocation();
   const navigate = useNavigate();
   const { signOut } = useAuth();
-  const navItems = role === "admin" ? adminNav : internNav;
 
   const handleLogout = async () => {
     await signOut();
@@ -41,10 +26,10 @@ const PortalLayout = ({ children, role }: PortalLayoutProps) => {
     <div className="flex h-screen overflow-hidden">
       <aside className="w-64 flex-shrink-0 bg-sidebar text-sidebar-foreground flex flex-col border-r border-sidebar-border">
         <div className="h-16 flex items-center px-6 border-b border-sidebar-border">
-          <Bot className="h-6 w-6 text-sidebar-primary mr-2.5" />
+          <Rocket className="h-6 w-6 text-sidebar-primary mr-2.5" />
           <div>
             <h1 className="text-sm font-semibold text-sidebar-accent-foreground">Syedom Labs</h1>
-            <p className="text-[10px] text-sidebar-foreground/60 uppercase tracking-wider">Internee Portal</p>
+            <p className="text-[10px] text-sidebar-foreground/60 uppercase tracking-wider">Internship Program</p>
           </div>
         </div>
         <nav className="flex-1 py-4 px-3 space-y-1">
