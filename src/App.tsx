@@ -26,6 +26,8 @@ import AdminTasks from "./pages/admin/Tasks";
 import AdminApiUsage from "./pages/admin/ApiUsage";
 import AdminRevenue from "./pages/admin/Revenue";
 import AdminLogs from "./pages/admin/Logs";
+import AdminAutomations from "./pages/admin/Automations";
+import AdminNotificationsPage from "./pages/admin/Notifications";
 
 const queryClient = new QueryClient();
 
@@ -57,6 +59,8 @@ const App = () => (
             <Route path="/admin/api-usage" element={<AdminRoute><AdminApiUsage /></AdminRoute>} />
             <Route path="/admin/revenue" element={<AdminRoute><AdminRevenue /></AdminRoute>} />
             <Route path="/admin/logs" element={<AdminRoute><AdminLogs /></AdminRoute>} />
+            <Route path="/admin/automations" element={<AdminRoute><AdminAutomations /></AdminRoute>} />
+            <Route path="/admin/notifications" element={<AdminRoute><AdminNotificationsPage /></AdminRoute>} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </AuthProvider>
