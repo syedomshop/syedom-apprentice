@@ -20,16 +20,16 @@ interface Automation {
 const defaultAutomations: Automation[] = [
   {
     id: "ai_grading",
-    label: "AI Task Grading",
-    description: "Automatically grade submissions using Gemini AI and assign scores",
+    label: "Submission Grading",
+    description: "Evaluate and grade submissions automatically and assign scores",
     icon: Brain,
     category: "ai",
     enabled: true,
   },
   {
     id: "task_generation",
-    label: "AI Task Generation",
-    description: "Auto-generate weekly tasks for each role when a new batch starts",
+    label: "Task Generation",
+    description: "Generate weekly tasks for each role when a new batch starts",
     icon: Bot,
     category: "ai",
     enabled: true,
