@@ -214,6 +214,8 @@ const AdminInterns = () => {
             )}
           </CardContent>
         </Card>
+          </TabsContent>
+        </Tabs>
       </div>
     </AdminLayout>
   );
