@@ -1,3 +1,4 @@
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
@@ -5,118 +6,77 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-Deno.serve(async (req) => {
-  if (req.method === "OPTIONS") {
-    return new Response(null, { headers: corsHeaders });
-  }
+serve(async (req) => {
+  if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
     const { repo_link, explanation, task_id, intern_id } = await req.json();
+    const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
+    if (!GEMINI_API_KEY) throw new Error("GEMINI_API_KEY not configured");
 
-    const geminiKey = Deno.env.get("GEMINI_API_KEY");
-    if (!geminiKey) throw new Error("GEMINI_API_KEY not configured");
+    const supabase = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
 
-    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+    const { data: task } = await supabase.from("tasks").select("title, description, learning_objective").eq("id", task_id).single();
 
-    // Check AI usage safety
-    const today = new Date().toISOString().split("T")[0];
-    const { data: usage } = await supabase
-      .from("ai_usage")
-      .select("*")
-      .eq("date", today)
-      .maybeSingle();
-
-    const dailyLimit = 10000;
-    const tokensUsed = usage?.tokens_used || 0;
-
-    // Even in warning mode, grading is still allowed
-    if (tokensUsed / dailyLimit > 0.95) {
-      // In critical mode, still allow grading but flag it
-      console.log("Critical mode: grading proceeding as essential operation");
-    }
-
-    // Get task details
-    const { data: task } = await supabase
-      .from("tasks")
-      .select("title, description, learning_objective")
-      .eq("id", task_id)
-      .single();
-
-    const prompt = `You are an AI grading assistant for a software development internship at Syedom Labs.
-
-Grade the following submission:
+    const prompt = `Evaluate this internship submission (score 0-100):
 
 Task: ${task?.title || "Unknown"}
-Task Description: ${task?.description || "N/A"}
-Learning Objective: ${task?.learning_objective || "N/A"}
-Repository Link: ${repo_link}
-Student Explanation: ${explanation}
+Description: ${task?.description || ""}
+Learning Objective: ${task?.learning_objective || ""}
+GitHub: ${repo_link || "Not provided"}
+Explanation: ${explanation}
 
-Evaluate based on:
-1. Code quality and structure
-2. Completion of requirements
-3. Understanding demonstrated in explanation
-4. Best practices
+Return ONLY JSON: {"score": number, "feedback": "string", "improvements": "string"}`;
 
-Return ONLY valid JSON with:
-{
-  "score": <number 0-10>,
-  "feedback": "<2-3 sentences of feedback>",
-  "improvements": "<specific improvement suggestions>"
-}`;
+    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], generationConfig: { temperature: 0.3 } }),
+    });
 
-    const geminiRes = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiKey}`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          contents: [{ parts: [{ text: prompt }] }],
-          generationConfig: { temperature: 0.3, maxOutputTokens: 1024 },
-        }),
+    const data = await res.json();
+    const text = data.candidates?.[0]?.content?.parts?.[0]?.text || "";
+    const jsonMatch = text.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) throw new Error("Failed to parse AI response");
+
+    const result = JSON.parse(jsonMatch[0]);
+    const score = Math.min(100, Math.max(0, Math.round(result.score)));
+    const feedback = `${result.feedback}\n\nSuggestions: ${result.improvements || "N/A"}`;
+
+    await supabase.from("submissions").update({ ai_score: score, ai_feedback: feedback, status: "graded" }).eq("intern_id", intern_id).eq("task_id", task_id).order("created_at", { ascending: false }).limit(1);
+
+    // Track AI usage
+    const today = new Date().toISOString().split("T")[0];
+    const { data: usage } = await supabase.from("ai_usage").select("*").eq("date", today).maybeSingle();
+    await supabase.from("ai_usage").upsert({ date: today, tokens_used: (usage?.tokens_used || 0) + text.length * 2, api_calls: (usage?.api_calls || 0) + 1 }, { onConflict: "date" });
+
+    // Check completion — send rejection email if avg < 50
+    const { data: allSubs } = await supabase.from("submissions").select("ai_score").eq("intern_id", intern_id).not("ai_score", "is", null);
+    const { count: total } = await supabase.from("intern_tasks").select("*", { count: "exact", head: true }).eq("intern_id", intern_id);
+    const { count: done } = await supabase.from("intern_tasks").select("*", { count: "exact", head: true }).eq("intern_id", intern_id).eq("status", "completed");
+
+    if (done === total && total && total > 0 && allSubs) {
+      const avg = allSubs.reduce((a, b) => a + (b.ai_score || 0), 0) / allSubs.length;
+      if (avg < 50) {
+        const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
+        const { data: profile } = await supabase.from("intern_profiles").select("email, name").eq("id", intern_id).single();
+        if (RESEND_API_KEY && profile) {
+          await fetch("https://api.resend.com/emails", {
+            method: "POST",
+            headers: { "Content-Type": "application/json", Authorization: `Bearer ${RESEND_API_KEY}` },
+            body: JSON.stringify({
+              from: "Syedom Labs <noreply@syedomlabs.com>",
+              to: profile.email,
+              subject: "Internship Completion — Certificate Status",
+              html: `<p>Dear ${profile.name},</p><p>Your average score of <strong>${Math.round(avg)}/100</strong> does not meet the 50/100 minimum for certification. You may reapply after 14 days.</p><p>— Syedom Labs</p>`,
+            }),
+          });
+        }
       }
-    );
+    }
 
-    const geminiData = await geminiRes.json();
-    const rawText = geminiData.candidates?.[0]?.content?.parts?.[0]?.text || "{}";
-    const tokensInResponse = geminiData.usageMetadata?.totalTokenCount || 300;
-
-    // Parse result
-    const jsonMatch = rawText.match(/\{[\s\S]*\}/);
-    const result = jsonMatch ? JSON.parse(jsonMatch[0]) : { score: 5, feedback: "Unable to parse AI response." };
-
-    // Update submission
-    await supabase
-      .from("submissions")
-      .update({
-        ai_score: result.score,
-        ai_feedback: `${result.feedback}\n\nImprovements: ${result.improvements || "N/A"}`,
-        status: "graded",
-      })
-      .eq("intern_id", intern_id)
-      .eq("task_id", task_id)
-      .order("created_at", { ascending: false })
-      .limit(1);
-
-    // Update AI usage
-    await supabase.from("ai_usage").upsert(
-      {
-        date: today,
-        tokens_used: tokensUsed + tokensInResponse,
-        api_calls: (usage?.api_calls || 0) + 1,
-      },
-      { onConflict: "date" }
-    );
-
-    return new Response(JSON.stringify({ success: true, score: result.score }), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
-  } catch (err) {
-    return new Response(JSON.stringify({ error: err.message }), {
-      status: 500,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return new Response(JSON.stringify({ success: true, score }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+  } catch (e) {
+    return new Response(JSON.stringify({ error: e.message }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
   }
 });

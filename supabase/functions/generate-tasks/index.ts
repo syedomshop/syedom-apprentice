@@ -1,3 +1,4 @@
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
@@ -5,99 +6,67 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-Deno.serve(async (req) => {
-  if (req.method === "OPTIONS") {
-    return new Response(null, { headers: corsHeaders });
-  }
+const FIELDS = ["Web Development", "Python / Backend", "Data Science", "Flutter Developer"];
+
+serve(async (req) => {
+  if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
-    const geminiKey = Deno.env.get("GEMINI_API_KEY");
-    if (!geminiKey) throw new Error("GEMINI_API_KEY not configured");
+    const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
+    if (!GEMINI_API_KEY) throw new Error("GEMINI_API_KEY not configured");
 
-    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+    const supabase = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
 
-    // Check AI usage safety
+    // Check AI safety
     const today = new Date().toISOString().split("T")[0];
-    const { data: usage } = await supabase
-      .from("ai_usage")
-      .select("*")
-      .eq("date", today)
-      .maybeSingle();
-
-    const dailyLimit = 10000;
-    const tokensUsed = usage?.tokens_used || 0;
-    if (tokensUsed / dailyLimit > 0.95) {
-      return new Response(JSON.stringify({ error: "Critical mode: AI paused" }), {
-        status: 429,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+    const { data: usage } = await supabase.from("ai_usage").select("*").eq("date", today).maybeSingle();
+    if ((usage?.tokens_used || 0) / 10000 > 0.95) {
+      return new Response(JSON.stringify({ error: "Critical mode: AI paused" }), { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    // Call Gemini API
-    const prompt = `Generate exactly 10 beginner-to-intermediate programming internship tasks for web development interns.
-For each task, provide a JSON array with objects containing:
-- title (string)
-- description (string, 2-3 sentences)
-- difficulty (string: "Beginner" or "Intermediate")
-- estimated_time (string, e.g. "45 min")
-- learning_objective (string, one sentence)
-- youtube_link (string, a relevant YouTube tutorial URL)
+    let totalInserted = 0;
 
-Return ONLY valid JSON array, no markdown or extra text.`;
+    for (const field of FIELDS) {
+      const { data: existing } = await supabase.from("tasks").select("week_number").eq("field", field);
+      const existingWeeks = new Set((existing || []).map(t => t.week_number));
+      const missingWeeks = Array.from({ length: 8 }, (_, i) => i + 1).filter(w => !existingWeeks.has(w));
+      if (missingWeeks.length === 0) continue;
 
-    const geminiRes = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiKey}`,
-      {
+      const prompt = `Generate ${missingWeeks.length} programming internship tasks for a "${field}" intern. Weeks: ${missingWeeks.join(", ")}. Progress from beginner (week 1) to advanced (week 8) with real-world projects.
+
+Return ONLY a JSON array where each object has:
+- "title": string
+- "description": string (2-3 sentences)
+- "difficulty": "Beginner" | "Intermediate" | "Advanced"
+- "week_number": number
+- "estimated_time": string
+- "learning_objective": string
+- "youtube_link": string (relevant tutorial URL)
+
+No markdown, just JSON.`;
+
+      const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          contents: [{ parts: [{ text: prompt }] }],
-          generationConfig: { temperature: 0.8, maxOutputTokens: 4096 },
-        }),
-      }
-    );
+        body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], generationConfig: { temperature: 0.7 } }),
+      });
 
-    const geminiData = await geminiRes.json();
-    const rawText = geminiData.candidates?.[0]?.content?.parts?.[0]?.text || "[]";
-    const tokensInResponse = geminiData.usageMetadata?.totalTokenCount || 500;
+      const data = await res.json();
+      const text = data.candidates?.[0]?.content?.parts?.[0]?.text || "";
+      const jsonMatch = text.match(/\[[\s\S]*\]/);
+      if (!jsonMatch) continue;
 
-    // Parse tasks from response
-    const jsonMatch = rawText.match(/\[[\s\S]*\]/);
-    const tasks = jsonMatch ? JSON.parse(jsonMatch[0]) : [];
+      const tasks = JSON.parse(jsonMatch[0]);
+      const rows = tasks.map((t: any) => ({ title: t.title, description: t.description, difficulty: t.difficulty || "Beginner", week_number: t.week_number, field, youtube_link: t.youtube_link || null, estimated_time: t.estimated_time || null, learning_objective: t.learning_objective || null }));
 
-    if (tasks.length > 0) {
-      const { error } = await supabase.from("tasks").insert(
-        tasks.map((t: any) => ({
-          title: t.title,
-          description: t.description,
-          difficulty: t.difficulty,
-          estimated_time: t.estimated_time,
-          learning_objective: t.learning_objective,
-          youtube_link: t.youtube_link,
-        }))
-      );
-      if (error) throw error;
+      const { error } = await supabase.from("tasks").insert(rows);
+      if (!error) totalInserted += rows.length;
+
+      await supabase.from("ai_usage").upsert({ date: today, tokens_used: (usage?.tokens_used || 0) + text.length * 2, api_calls: (usage?.api_calls || 0) + 1 }, { onConflict: "date" });
     }
 
-    // Update AI usage
-    await supabase.from("ai_usage").upsert(
-      {
-        date: today,
-        tokens_used: tokensUsed + tokensInResponse,
-        api_calls: (usage?.api_calls || 0) + 1,
-      },
-      { onConflict: "date" }
-    );
-
-    return new Response(JSON.stringify({ success: true, tasks_generated: tasks.length }), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
-  } catch (err) {
-    return new Response(JSON.stringify({ error: err.message }), {
-      status: 500,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return new Response(JSON.stringify({ success: true, inserted: totalInserted }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+  } catch (e) {
+    return new Response(JSON.stringify({ error: e.message }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
   }
 });
