@@ -14,7 +14,6 @@ serve(async (req) => {
     const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
     if (!RESEND_API_KEY) throw new Error("RESEND_API_KEY not configured");
 
-    // Send confirmation email
     await fetch("https://api.resend.com/emails", {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${RESEND_API_KEY}` },
@@ -28,24 +27,22 @@ serve(async (req) => {
             <h2>Application Received</h2>
             <p>Dear ${name},</p>
             <p>Thank you for applying to the <strong>${field}</strong> internship at Syedom Labs.</p>
-            <p>Your application is under review. You will receive your official offer letter within the next few hours.</p>
+            <p>Your application is under review by our team. You will receive your official offer letter within the next few hours.</p>
             <p><strong>Intern ID:</strong> ${intern_id}</p>
             <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 20px 0;">
-            <p style="color: #718096; font-size: 12px;">Syedom Labs · CEO: Syed Hasnat Ali · HR: M. Sohaib Ali</p>
+            <p style="color: #718096; font-size: 12px;">© Syedom Labs. All rights reserved.</p>
           </div>
         `,
       }),
     });
 
-    // Queue delayed offer letter (1-3 hours random delay)
-    const delayMs = (Math.random() * 2 + 1) * 60 * 60 * 1000; // 1-3 hours
+    const delayMs = (Math.random() * 2 + 1) * 60 * 60 * 1000;
     const sendAfter = new Date(Date.now() + delayMs).toISOString();
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    // Get the intern profile id
     const { data: profile } = await supabase
       .from("intern_profiles")
       .select("id")

@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Award, Github, Rocket, User, ExternalLink } from "lucide-react";
+import { Award, Github, User, ExternalLink } from "lucide-react";
 import { supabase } from "@/lib/supabaseClient";
 
 const Portfolio = () => {
@@ -52,14 +52,13 @@ const Portfolio = () => {
       <header className="border-b border-border bg-card/80 backdrop-blur-sm sticky top-0 z-50">
         <div className="container mx-auto flex items-center justify-between h-16 px-4">
           <Link to="/" className="flex items-center gap-2">
-            <Rocket className="h-6 w-6 text-primary" />
+            <img src="/images/syedom-labs-logo.png" alt="Syedom Labs" className="h-8 w-8 rounded-lg object-cover" />
             <span className="font-semibold text-lg text-foreground">Syedom Labs</span>
           </Link>
         </div>
       </header>
 
       <div className="container mx-auto max-w-3xl py-12 px-4 space-y-8">
-        {/* Profile Header */}
         <div className="text-center space-y-3">
           <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-primary/10">
             <User className="h-10 w-10 text-primary" />
@@ -74,7 +73,6 @@ const Portfolio = () => {
           </div>
         </div>
 
-        {/* Certificate */}
         {certificate && (
           <Card className="border-success/30 bg-success/5">
             <CardContent className="p-6 flex items-center gap-4">
@@ -90,7 +88,6 @@ const Portfolio = () => {
           </Card>
         )}
 
-        {/* Projects */}
         <div>
           <h2 className="text-lg font-semibold text-foreground mb-4">Projects ({submissions.length})</h2>
           {submissions.length === 0 ? (

@@ -1,6 +1,6 @@
 import { ReactNode } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { LayoutDashboard, ListTodo, Upload, TrendingUp, Award, LogOut, Rocket } from "lucide-react";
+import { LayoutDashboard, ListTodo, Upload, TrendingUp, Award, LogOut } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
 
@@ -26,7 +26,7 @@ const PortalLayout = ({ children }: { children: ReactNode }) => {
     <div className="flex h-screen overflow-hidden">
       <aside className="w-64 flex-shrink-0 bg-sidebar text-sidebar-foreground flex flex-col border-r border-sidebar-border">
         <div className="h-16 flex items-center px-6 border-b border-sidebar-border">
-          <Rocket className="h-6 w-6 text-sidebar-primary mr-2.5" />
+          <img src="/images/syedom-labs-logo.png" alt="Syedom Labs" className="h-8 w-8 rounded-lg object-cover mr-2.5" />
           <div>
             <h1 className="text-sm font-semibold text-sidebar-accent-foreground">Syedom Labs</h1>
             <p className="text-[10px] text-sidebar-foreground/60 uppercase tracking-wider">Internship Program</p>
