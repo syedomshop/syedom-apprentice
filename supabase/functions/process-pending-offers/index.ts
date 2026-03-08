@@ -17,7 +17,6 @@ serve(async (req) => {
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    // Get pending offers that are ready to send
     const { data: pendingOffers } = await supabase
       .from("pending_offers")
       .select("*")
@@ -33,7 +32,6 @@ serve(async (req) => {
     let sent = 0;
 
     for (const offer of pendingOffers) {
-      // Get start date from intern profile
       const { data: profile } = await supabase
         .from("intern_profiles")
         .select("start_date")
@@ -42,6 +40,7 @@ serve(async (req) => {
 
       const startDate = profile?.start_date || new Date(Date.now() + 7 * 86400000).toISOString().split("T")[0];
 
+      // CEO and HR signature images hosted in public/images/
       const offerHtml = `
         <div style="font-family: Georgia, serif; max-width: 700px; margin: 0 auto; padding: 40px; border: 4px double #1a365d;">
           <div style="text-align: center; margin-bottom: 30px;">

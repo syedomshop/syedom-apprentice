@@ -17,7 +17,6 @@ serve(async (req) => {
 
     const supabase = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
 
-    // Check AI safety
     const today = new Date().toISOString().split("T")[0];
     const { data: usage } = await supabase.from("ai_usage").select("*").eq("date", today).maybeSingle();
     if ((usage?.tokens_used || 0) / 10000 > 0.95) {
@@ -34,16 +33,18 @@ serve(async (req) => {
 
       const prompt = `Generate ${missingWeeks.length} programming internship tasks for a "${field}" intern. Weeks: ${missingWeeks.join(", ")}. Progress from beginner (week 1) to advanced (week 8) with real-world projects.
 
-Return ONLY a JSON array where each object has:
-- "title": string
-- "description": string (2-3 sentences)
-- "difficulty": "Beginner" | "Intermediate" | "Advanced"
-- "week_number": number
-- "estimated_time": string
-- "learning_objective": string
-- "youtube_link": string (relevant tutorial URL)
+Each task MUST follow this exact structure:
+- "title": concise project title
+- "description": 2-3 sentences describing the task
+- "difficulty": "Beginner" (weeks 1-3), "Intermediate" (weeks 4-6), or "Advanced" (weeks 7-8)
+- "week_number": the week number
+- "estimated_time": e.g. "4-6 hours"
+- "learning_objective": what the student will learn
+- "mentor_explanation": a 2-3 sentence explanation of why this skill matters in real SaaS/industry apps
+- "youtube_link": a real YouTube tutorial URL relevant to the task topic
+- "deliverable": what the student must submit (e.g. "GitHub repository with README and screenshots")
 
-No markdown, just JSON.`;
+Return ONLY a JSON array. No markdown, no code fences.`;
 
       const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`, {
         method: "POST",
@@ -57,12 +58,27 @@ No markdown, just JSON.`;
       if (!jsonMatch) continue;
 
       const tasks = JSON.parse(jsonMatch[0]);
-      const rows = tasks.map((t: any) => ({ title: t.title, description: t.description, difficulty: t.difficulty || "Beginner", week_number: t.week_number, field, youtube_link: t.youtube_link || null, estimated_time: t.estimated_time || null, learning_objective: t.learning_objective || null }));
+      const rows = tasks.map((t: any) => ({
+        title: t.title,
+        description: t.description,
+        difficulty: t.difficulty || "Beginner",
+        week_number: t.week_number,
+        field,
+        youtube_link: t.youtube_link || null,
+        estimated_time: t.estimated_time || null,
+        learning_objective: t.learning_objective || null,
+        mentor_explanation: t.mentor_explanation || null,
+        deliverable: t.deliverable || "GitHub repository with README",
+      }));
 
       const { error } = await supabase.from("tasks").insert(rows);
       if (!error) totalInserted += rows.length;
 
-      await supabase.from("ai_usage").upsert({ date: today, tokens_used: (usage?.tokens_used || 0) + text.length * 2, api_calls: (usage?.api_calls || 0) + 1 }, { onConflict: "date" });
+      await supabase.from("ai_usage").upsert({
+        date: today,
+        tokens_used: (usage?.tokens_used || 0) + text.length * 2,
+        api_calls: (usage?.api_calls || 0) + 1,
+      }, { onConflict: "date" });
     }
 
     return new Response(JSON.stringify({ success: true, inserted: totalInserted }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });

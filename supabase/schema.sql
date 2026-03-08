@@ -9,6 +9,7 @@ CREATE TYPE public.internship_status AS ENUM ('active', 'completed', 'removed');
 CREATE TYPE public.task_status AS ENUM ('pending', 'in_progress', 'completed');
 CREATE TYPE public.submission_status AS ENUM ('submitted', 'graded');
 CREATE TYPE public.offer_status AS ENUM ('pending', 'sent');
+CREATE TYPE public.certificate_status AS ENUM ('issued', 'revoked');
 
 -- 2. TABLES
 
@@ -27,7 +28,7 @@ CREATE TABLE public.intern_profiles (
   user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL UNIQUE,
   name TEXT NOT NULL,
   username TEXT NOT NULL UNIQUE,
-  email TEXT NOT NULL,
+  email TEXT NOT NULL UNIQUE,
   phone TEXT,
   intern_id TEXT NOT NULL UNIQUE,
   field TEXT NOT NULL,
@@ -47,6 +48,8 @@ CREATE TABLE public.tasks (
   youtube_link TEXT,
   estimated_time TEXT,
   learning_objective TEXT,
+  mentor_explanation TEXT,
+  deliverable TEXT,
   created_at TIMESTAMPTZ DEFAULT now()
 );
 
@@ -96,6 +99,19 @@ CREATE TABLE public.pending_offers (
   created_at TIMESTAMPTZ DEFAULT now()
 );
 
+-- 2h. certificates
+CREATE TABLE public.certificates (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  intern_id UUID REFERENCES public.intern_profiles(id) ON DELETE CASCADE NOT NULL UNIQUE,
+  certificate_code TEXT NOT NULL UNIQUE,
+  student_name TEXT NOT NULL,
+  field TEXT NOT NULL,
+  average_score INTEGER NOT NULL,
+  tasks_completed INTEGER NOT NULL,
+  status certificate_status DEFAULT 'issued',
+  issued_at TIMESTAMPTZ DEFAULT now()
+);
+
 -- 3. SECURITY DEFINER FUNCTIONS
 
 CREATE OR REPLACE FUNCTION public.has_role(_user_id UUID, _role app_role)
@@ -128,7 +144,6 @@ AS $$
   SELECT (SELECT COUNT(*) FROM public.intern_profiles WHERE status = 'active') < 50
 $$;
 
--- Get current week for an intern based on start_date
 CREATE OR REPLACE FUNCTION public.get_intern_week(_intern_id UUID)
 RETURNS INTEGER
 LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public
@@ -148,6 +163,7 @@ ALTER TABLE public.intern_tasks ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.submissions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.ai_usage ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.pending_offers ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.certificates ENABLE ROW LEVEL SECURITY;
 
 -- user_roles
 CREATE POLICY "Users can read own roles" ON public.user_roles FOR SELECT TO authenticated USING (user_id = auth.uid());
@@ -157,6 +173,8 @@ CREATE POLICY "Allow insert for authenticated users" ON public.user_roles FOR IN
 CREATE POLICY "Users can read own profile" ON public.intern_profiles FOR SELECT TO authenticated USING (user_id = auth.uid());
 CREATE POLICY "Users can update own profile" ON public.intern_profiles FOR UPDATE TO authenticated USING (user_id = auth.uid());
 CREATE POLICY "Users can insert own profile" ON public.intern_profiles FOR INSERT TO authenticated WITH CHECK (user_id = auth.uid());
+-- Public read for portfolio pages (only name, username, field, status)
+CREATE POLICY "Public can read basic profiles" ON public.intern_profiles FOR SELECT TO anon USING (true);
 
 -- tasks
 CREATE POLICY "Authenticated users can read tasks" ON public.tasks FOR SELECT TO authenticated USING (true);
@@ -178,14 +196,21 @@ CREATE POLICY "Service role can manage ai_usage" ON public.ai_usage FOR ALL TO s
 -- pending_offers
 CREATE POLICY "Service role can manage pending_offers" ON public.pending_offers FOR ALL TO service_role USING (true);
 
+-- certificates
+CREATE POLICY "Public can read certificates" ON public.certificates FOR SELECT TO anon USING (true);
+CREATE POLICY "Authenticated can read certificates" ON public.certificates FOR SELECT TO authenticated USING (true);
+CREATE POLICY "Service role can manage certificates" ON public.certificates FOR ALL TO service_role USING (true);
+
 -- 5. INDEXES
 
 CREATE INDEX idx_intern_profiles_user_id ON public.intern_profiles(user_id);
 CREATE INDEX idx_intern_profiles_status ON public.intern_profiles(status);
+CREATE INDEX idx_intern_profiles_username ON public.intern_profiles(username);
 CREATE INDEX idx_tasks_field_week ON public.tasks(field, week_number);
 CREATE INDEX idx_intern_tasks_intern_id ON public.intern_tasks(intern_id);
 CREATE INDEX idx_submissions_intern_id ON public.submissions(intern_id);
 CREATE INDEX idx_pending_offers_status ON public.pending_offers(status, send_after);
+CREATE INDEX idx_certificates_code ON public.certificates(certificate_code);
 
 -- =============================================
 -- pg_cron SQL (run separately after enabling pg_cron and pg_net)
