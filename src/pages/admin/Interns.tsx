@@ -12,9 +12,11 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { supabase } from "@/lib/supabaseClient";
-import { Search, RefreshCw } from "lucide-react";
+import { Search, RefreshCw, Settings, Users } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import InternLimitsPanel from "@/components/admin/InternLimitsPanel";
 
 interface Intern {
   id: string;
