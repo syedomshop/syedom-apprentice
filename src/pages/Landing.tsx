@@ -52,7 +52,7 @@ const Landing = () => {
             <span className="text-primary">Syedom Labs</span>
           </h1>
           <p className="text-lg text-muted-foreground mb-8 max-w-2xl mx-auto">
-            A 3-month intensive internship with 8 weeks of real-world projects, expert evaluation, and industry-recognized certification. Up to 600 interns per batch — apply today.
+            A 3-month intensive internship with 8 weeks of real-world projects, expert evaluation, and industry-recognized certification. Apply today and begin your journey.
           </p>
           <div className="flex items-center justify-center gap-4">
             <Link to="/register">
@@ -114,7 +114,7 @@ const Landing = () => {
               "Verifiable completion certificate with unique code",
               "Public portfolio page to showcase your work",
               "GitHub-based submissions — no file uploads needed",
-              "3-month batch system — up to 600 interns per batch",
+              "3-month structured batch system with cohort-based learning",
             ].map((f) => (
               <div key={f} className="flex items-center gap-3 p-4 bg-card rounded-lg border border-border">
                 <CheckCircle className="h-5 w-5 text-success flex-shrink-0" />
@@ -129,7 +129,7 @@ const Landing = () => {
       <section className="py-20 px-4">
         <div className="container mx-auto text-center max-w-2xl">
           <h2 className="text-3xl font-bold text-foreground mb-4">Ready to Start?</h2>
-          <p className="text-muted-foreground mb-8">Up to 600 seats per batch. Apply now and begin your journey in tech.</p>
+          <p className="text-muted-foreground mb-8">Limited seats available. Apply now and begin your journey in tech.</p>
           <Link to="/register">
             <Button size="lg" className="text-base px-8">Apply for Internship</Button>
           </Link>

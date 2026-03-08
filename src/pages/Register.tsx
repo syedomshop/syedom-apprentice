@@ -37,7 +37,7 @@ const Register = () => {
     try {
       const { data: seatCheck } = await supabase.rpc("check_seat_available");
       if (!seatCheck) {
-        toast({ title: "Applications closed", description: "Current batch is full. You've been added to the waitlist for the next batch.", variant: "destructive" });
+        toast({ title: "Applications closed", description: "This batch is full. You've been added to the waitlist for the next batch.", variant: "destructive" });
         await supabase.from("waitlist").insert({ name: form.name, email: form.email, field: form.field });
         setLoading(false);
         return;

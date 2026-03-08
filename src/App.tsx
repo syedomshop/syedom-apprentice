@@ -13,6 +13,7 @@ import StudentTasks from "./pages/student/Tasks";
 import SubmitTask from "./pages/student/SubmitTask";
 import Progress from "./pages/student/Progress";
 import Certificate from "./pages/student/Certificate";
+import Notifications from "./pages/student/Notifications";
 import VerifyCertificate from "./pages/VerifyCertificate";
 import Portfolio from "./pages/Portfolio";
 import NotFound from "./pages/NotFound";
@@ -37,6 +38,7 @@ const App = () => (
             <Route path="/tasks" element={<ProtectedRoute><StudentTasks /></ProtectedRoute>} />
             <Route path="/submit" element={<ProtectedRoute><SubmitTask /></ProtectedRoute>} />
             <Route path="/progress" element={<ProtectedRoute><Progress /></ProtectedRoute>} />
+            <Route path="/notifications" element={<ProtectedRoute><Notifications /></ProtectedRoute>} />
             <Route path="/certificate" element={<ProtectedRoute><Certificate /></ProtectedRoute>} />
             <Route path="*" element={<NotFound />} />
           </Routes>

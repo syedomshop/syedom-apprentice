@@ -131,7 +131,21 @@ CREATE TABLE public.certificates (
   issued_at TIMESTAMPTZ DEFAULT now()
 );
 
--- 2j. waitlist
+-- 2j. notifications
+CREATE TABLE public.notifications (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  intern_id UUID REFERENCES public.intern_profiles(id) ON DELETE CASCADE NOT NULL,
+  title TEXT NOT NULL,
+  message TEXT NOT NULL,
+  type TEXT NOT NULL DEFAULT 'info',
+  link TEXT,
+  link_label TEXT,
+  is_read BOOLEAN DEFAULT false,
+  scheduled_for TIMESTAMPTZ NOT NULL DEFAULT now(),
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+
+-- 2k. waitlist
 CREATE TABLE public.waitlist (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   name TEXT NOT NULL,
@@ -200,6 +214,7 @@ ALTER TABLE public.submissions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.ai_usage ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.pending_offers ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.certificates ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.notifications ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.waitlist ENABLE ROW LEVEL SECURITY;
 
 -- user_roles
@@ -242,6 +257,11 @@ CREATE POLICY "Authenticated can read certificates" ON public.certificates FOR S
 CREATE POLICY "Authenticated can update own certificate" ON public.certificates FOR UPDATE TO authenticated USING (intern_id = public.get_intern_profile_id(auth.uid()));
 CREATE POLICY "Service role can manage certificates" ON public.certificates FOR ALL TO service_role USING (true);
 
+-- notifications
+CREATE POLICY "Interns can read own notifications" ON public.notifications FOR SELECT TO authenticated USING (intern_id = public.get_intern_profile_id(auth.uid()));
+CREATE POLICY "Interns can update own notifications" ON public.notifications FOR UPDATE TO authenticated USING (intern_id = public.get_intern_profile_id(auth.uid()));
+CREATE POLICY "Service role can manage notifications" ON public.notifications FOR ALL TO service_role USING (true);
+
 -- waitlist
 CREATE POLICY "Anyone can insert waitlist" ON public.waitlist FOR INSERT TO anon, authenticated WITH CHECK (true);
 CREATE POLICY "Service role can manage waitlist" ON public.waitlist FOR ALL TO service_role USING (true);
@@ -260,6 +280,8 @@ CREATE INDEX idx_pending_offers_status ON public.pending_offers(status, send_aft
 CREATE INDEX idx_certificates_code ON public.certificates(certificate_code);
 CREATE INDEX idx_certificates_payment ON public.certificates(payment_status);
 CREATE INDEX idx_batches_status ON public.batches(status);
+CREATE INDEX idx_notifications_intern ON public.notifications(intern_id, is_read);
+CREATE INDEX idx_notifications_scheduled ON public.notifications(scheduled_for);
 
 -- =============================================
 -- pg_cron SQL (run separately after enabling pg_cron and pg_net)

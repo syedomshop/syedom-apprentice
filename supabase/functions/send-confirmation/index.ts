@@ -58,6 +58,45 @@ serve(async (req) => {
         intern_id,
         send_after: sendAfter,
       });
+
+      // Schedule milestone notifications
+      const startDate = new Date(Date.now() + 7 * 86400000); // 7 days from now
+      const notifications = [
+        {
+          intern_id: profile.id,
+          title: "📋 Prepare for Your Internship",
+          message: "Your internship starts in a few days! Make sure your GitHub account is set up and you're ready to begin.",
+          type: "reminder",
+          scheduled_for: new Date(Date.now() + 5 * 86400000).toISOString(),
+        },
+        {
+          intern_id: profile.id,
+          title: "🎓 Orientation Session",
+          message: "Join our live orientation session to meet the team and get started with your internship journey.",
+          type: "meeting",
+          link: "https://meet.google.com/zyr-jwmt-yyb",
+          link_label: "Join Orientation Meeting",
+          scheduled_for: new Date(Date.now() + 7 * 86400000).toISOString(),
+        },
+        {
+          intern_id: profile.id,
+          title: "📊 Midpoint Check-in",
+          message: "You're halfway through! Review your progress and ensure all submissions are up to date.",
+          type: "reminder",
+          scheduled_for: new Date(startDate.getTime() + 28 * 86400000).toISOString(),
+        },
+        {
+          intern_id: profile.id,
+          title: "🎤 Final Project Presentation",
+          message: "It's time to showcase your work! Join the final presentation session to present your project.",
+          type: "meeting",
+          link: "https://meet.google.com/urh-hrej-jti",
+          link_label: "Join Presentation Meeting",
+          scheduled_for: new Date(startDate.getTime() + 56 * 86400000).toISOString(),
+        },
+      ];
+
+      await supabase.from("notifications").insert(notifications);
     }
 
     return new Response(JSON.stringify({ success: true }), {
