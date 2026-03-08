@@ -52,7 +52,7 @@ const Landing = () => {
             <span className="text-primary">Syedom Labs</span>
           </h1>
           <p className="text-lg text-muted-foreground mb-8 max-w-2xl mx-auto">
-            A 3-month intensive internship with 8 weeks of real-world projects, expert evaluation, and industry-recognized certification. Up to 600 interns per batch — apply today.
+            A 3-month intensive internship with 8 weeks of real-world projects, expert evaluation, and industry-recognized certification. Apply today and begin your journey.
           </p>
           <div className="flex items-center justify-center gap-4">
             <Link to="/register">
