@@ -22,6 +22,10 @@ import AdminDashboard from "./pages/admin/Dashboard";
 import AdminInterns from "./pages/admin/Interns";
 import AdminCertificates from "./pages/admin/Certificates";
 import AdminBatches from "./pages/admin/Batches";
+import AdminTasks from "./pages/admin/Tasks";
+import AdminApiUsage from "./pages/admin/ApiUsage";
+import AdminRevenue from "./pages/admin/Revenue";
+import AdminLogs from "./pages/admin/Logs";
 
 const queryClient = new QueryClient();
 
@@ -49,6 +53,10 @@ const App = () => (
             <Route path="/admin/interns" element={<AdminRoute><AdminInterns /></AdminRoute>} />
             <Route path="/admin/certificates" element={<AdminRoute><AdminCertificates /></AdminRoute>} />
             <Route path="/admin/batches" element={<AdminRoute><AdminBatches /></AdminRoute>} />
+            <Route path="/admin/tasks" element={<AdminRoute><AdminTasks /></AdminRoute>} />
+            <Route path="/admin/api-usage" element={<AdminRoute><AdminApiUsage /></AdminRoute>} />
+            <Route path="/admin/revenue" element={<AdminRoute><AdminRevenue /></AdminRoute>} />
+            <Route path="/admin/logs" element={<AdminRoute><AdminLogs /></AdminRoute>} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </AuthProvider>
