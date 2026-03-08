@@ -45,14 +45,14 @@ const Landing = () => {
       <section className="py-24 px-4">
         <div className="container mx-auto text-center max-w-3xl">
           <div className="inline-flex items-center gap-2 rounded-full bg-primary/10 px-4 py-1.5 text-sm text-primary font-medium mb-6">
-            <Rocket className="h-4 w-4" /> Now Accepting Applications
+            <Rocket className="h-4 w-4" /> Now Accepting Applications — Batch Starting Soon
           </div>
           <h1 className="text-4xl md:text-5xl font-bold text-foreground leading-tight mb-6">
             Launch Your Tech Career with{" "}
             <span className="text-primary">Syedom Labs</span>
           </h1>
           <p className="text-lg text-muted-foreground mb-8 max-w-2xl mx-auto">
-            An 8-week intensive internship program with AI-powered evaluation, real-world projects, and industry-recognized certification. Fully automated — apply today.
+            A 3-month intensive internship with 8 weeks of real-world projects, expert evaluation, and industry-recognized certification. Up to 600 interns per batch — apply today.
           </p>
           <div className="flex items-center justify-center gap-4">
             <Link to="/register">
@@ -109,12 +109,13 @@ const Landing = () => {
           <h2 className="text-3xl font-bold text-foreground text-center mb-12">Why Syedom Labs?</h2>
           <div className="space-y-4">
             {[
-              "AI-powered project evaluation and feedback",
-              "8 weeks of structured, real-world tasks",
+              "Expert project evaluation with detailed feedback",
+              "8 weeks of structured, real-world tasks with tutorials",
               "Verifiable completion certificate with unique code",
               "Public portfolio page to showcase your work",
+              "GitHub-based submissions — no file uploads needed",
+              "3-month batch system — up to 600 interns per batch",
               "Fully automated — no waiting, no delays",
-              "GitHub repo validation and anti-cheat detection",
             ].map((f) => (
               <div key={f} className="flex items-center gap-3 p-4 bg-card rounded-lg border border-border">
                 <CheckCircle className="h-5 w-5 text-success flex-shrink-0" />
@@ -129,7 +130,7 @@ const Landing = () => {
       <section className="py-20 px-4">
         <div className="container mx-auto text-center max-w-2xl">
           <h2 className="text-3xl font-bold text-foreground mb-4">Ready to Start?</h2>
-          <p className="text-muted-foreground mb-8">Limited to 50 seats. Apply now and begin your journey in tech.</p>
+          <p className="text-muted-foreground mb-8">Up to 600 seats per batch. Apply now and begin your journey in tech.</p>
           <Link to="/register">
             <Button size="lg" className="text-base px-8">Apply for Internship</Button>
           </Link>

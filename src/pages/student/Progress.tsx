@@ -31,7 +31,7 @@ const Progress = () => {
   const scored = submissions.filter(s => s.ai_score != null);
   const avgScore = scored.length > 0 ? (scored.reduce((a, b) => a + (b.ai_score || 0), 0) / scored.length).toFixed(1) : "0";
   const completionRate = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
-  const eligible = parseFloat(avgScore) >= 50;
+  const eligible = parseFloat(avgScore) >= 50 && completedTasks >= 8;
 
   return (
     <PortalLayout>
@@ -43,7 +43,7 @@ const Progress = () => {
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div className="portal-stat">
-            <span className="text-sm text-muted-foreground">Average Score</span>
+            <span className="text-sm text-muted-foreground">Weekly Average</span>
             <span className="text-3xl font-semibold text-foreground">{avgScore}<span className="text-base text-muted-foreground">/100</span></span>
           </div>
           <div className="portal-stat">
@@ -56,8 +56,13 @@ const Progress = () => {
           <div className="portal-stat">
             <span className="text-sm text-muted-foreground">Certificate Eligibility</span>
             <span className={`text-lg font-semibold ${eligible ? "text-success" : "text-destructive"}`}>
-              {eligible ? "✅ Eligible" : "❌ Not Eligible (need avg ≥ 50)"}
+              {eligible ? "✅ Eligible (avg ≥ 50 + all tasks)" : `❌ Not Eligible`}
             </span>
+            {!eligible && (
+              <p className="text-xs text-muted-foreground">
+                Need avg ≥ 50 and all 8 tasks completed
+              </p>
+            )}
           </div>
         </div>
 
@@ -79,7 +84,15 @@ const Progress = () => {
                         <span className="portal-badge-info text-xs">Week {sub.tasks?.week_number}</span>
                         <h3 className="text-sm font-medium text-foreground">{sub.tasks?.title}</h3>
                       </div>
-                      <p className="text-xs text-muted-foreground">{sub.ai_feedback || "Awaiting AI evaluation..."}</p>
+                      {/* Instructor comment (no AI disclosure) */}
+                      {sub.instructor_comment && (
+                        <p className="text-xs text-foreground font-medium">
+                          📝 Instructor: {sub.instructor_comment}
+                        </p>
+                      )}
+                      {sub.intern_comment && (
+                        <p className="text-xs text-muted-foreground italic">You: {sub.intern_comment}</p>
+                      )}
                       <span className="text-xs text-muted-foreground">{new Date(sub.created_at).toLocaleDateString()}</span>
                     </div>
                     <div className="flex items-center gap-1 ml-4">
