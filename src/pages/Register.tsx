@@ -25,6 +25,7 @@ const Register = () => {
     password: "",
     field: "",
     github_username: "",
+    resume_text: "",
   });
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
