@@ -5,6 +5,10 @@ import {
   Users,
   Award,
   Layers,
+  BookOpen,
+  Cpu,
+  DollarSign,
+  FileText,
   LogOut,
   ArrowLeft,
 } from "lucide-react";
