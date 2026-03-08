@@ -97,7 +97,7 @@ const AdminLogs = () => {
               <Mail className="h-4 w-4" /> Email Log ({offers.length})
             </TabsTrigger>
             <TabsTrigger value="grading" className="gap-2">
-              <Brain className="h-4 w-4" /> AI Grading ({submissions.length})
+              <Brain className="h-4 w-4" /> Grading ({submissions.length})
             </TabsTrigger>
             <TabsTrigger value="notifications" className="gap-2">
               <Bell className="h-4 w-4" /> Notifications ({notifications.length})
