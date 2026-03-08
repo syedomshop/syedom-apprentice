@@ -22,6 +22,10 @@ import AdminDashboard from "./pages/admin/Dashboard";
 import AdminInterns from "./pages/admin/Interns";
 import AdminCertificates from "./pages/admin/Certificates";
 import AdminBatches from "./pages/admin/Batches";
+import AdminTasks from "./pages/admin/Tasks";
+import AdminApiUsage from "./pages/admin/ApiUsage";
+import AdminRevenue from "./pages/admin/Revenue";
+import AdminLogs from "./pages/admin/Logs";
 
 const queryClient = new QueryClient();
 
