@@ -18,8 +18,12 @@ import { useAuth } from "@/contexts/AuthContext";
 const adminNavItems = [
   { label: "Overview", icon: LayoutDashboard, path: "/admin" },
   { label: "Interns", icon: Users, path: "/admin/interns" },
+  { label: "Tasks", icon: BookOpen, path: "/admin/tasks" },
   { label: "Certificates", icon: Award, path: "/admin/certificates" },
   { label: "Batches", icon: Layers, path: "/admin/batches" },
+  { label: "API Usage", icon: Cpu, path: "/admin/api-usage" },
+  { label: "Revenue", icon: DollarSign, path: "/admin/revenue" },
+  { label: "Logs", icon: FileText, path: "/admin/logs" },
 ];
 
 const AdminLayout = ({ children }: { children: ReactNode }) => {
