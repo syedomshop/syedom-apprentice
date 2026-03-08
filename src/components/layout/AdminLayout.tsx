@@ -9,6 +9,8 @@ import {
   Cpu,
   DollarSign,
   FileText,
+  Settings,
+  Bell,
   LogOut,
   ArrowLeft,
 } from "lucide-react";
