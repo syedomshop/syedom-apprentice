@@ -72,7 +72,7 @@ const AdminApiUsage = () => {
           <div className="flex gap-2">
             <Button variant={aiPaused ? "default" : "destructive"} size="sm" onClick={toggleAi}>
               {aiPaused ? <Play className="h-4 w-4 mr-2" /> : <Pause className="h-4 w-4 mr-2" />}
-              {aiPaused ? "Resume AI" : "Pause AI"}
+              {aiPaused ? "Resume Grading" : "Pause Grading"}
             </Button>
             <Button variant="outline" size="sm" onClick={fetchUsage} disabled={loading}>
               <RefreshCw className={`h-4 w-4 mr-2 ${loading ? "animate-spin" : ""}`} />
