@@ -1,40 +1,50 @@
-import { useEffect, useState } from "react";
 import PortalLayout from "@/components/layout/PortalLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ListTodo, CheckCircle, Clock, TrendingUp, Linkedin, ExternalLink } from "lucide-react";
 import { supabase } from "@/lib/supabaseClient";
 import { useAuth } from "@/contexts/AuthContext";
+import { useCachedQuery } from "@/hooks/useCachedQuery";
+import { TTL } from "@/lib/cache";
+
+interface DashboardData {
+  tasks: any[];
+  total: number;
+  completed: number;
+  pending: number;
+  avgScore: number;
+}
 
 const StudentDashboard = () => {
   const { internProfile } = useAuth();
-  const [tasks, setTasks] = useState<any[]>([]);
-  const [stats, setStats] = useState({ total: 0, completed: 0, pending: 0, avgScore: 0 });
-  const [loading, setLoading] = useState(true);
+  const profileId = internProfile?.id;
 
-  useEffect(() => {
-    if (!internProfile) return;
-    const fetchData = async () => {
-      const { data: internTasks } = await supabase
-        .from("intern_tasks")
-        .select("*, tasks(*)")
-        .eq("intern_id", internProfile.id)
-        .order("assigned_date", { ascending: false })
-        .limit(5);
+  const { data, loading } = useCachedQuery<DashboardData>(
+    `dashboard_${profileId}`,
+    async () => {
+      const [tasksRes, totalRes, completedRes, pendingRes, subsRes] = await Promise.all([
+        supabase.from("intern_tasks").select("*, tasks(*)").eq("intern_id", profileId).order("assigned_date", { ascending: false }).limit(5),
+        supabase.from("intern_tasks").select("*", { count: "exact", head: true }).eq("intern_id", profileId),
+        supabase.from("intern_tasks").select("*", { count: "exact", head: true }).eq("intern_id", profileId).eq("status", "completed"),
+        supabase.from("intern_tasks").select("*", { count: "exact", head: true }).eq("intern_id", profileId).in("status", ["pending", "in_progress"]),
+        supabase.from("submissions").select("ai_score").eq("intern_id", profileId).not("ai_score", "is", null),
+      ]);
 
-      setTasks(internTasks || []);
+      const subs = subsRes.data || [];
+      const avg = subs.length > 0 ? parseFloat((subs.reduce((a, b) => a + (b.ai_score || 0), 0) / subs.length).toFixed(1)) : 0;
 
-      const { count: totalCount } = await supabase.from("intern_tasks").select("*", { count: "exact", head: true }).eq("intern_id", internProfile.id);
-      const { count: completedCount } = await supabase.from("intern_tasks").select("*", { count: "exact", head: true }).eq("intern_id", internProfile.id).eq("status", "completed");
-      const { count: pendingCount } = await supabase.from("intern_tasks").select("*", { count: "exact", head: true }).eq("intern_id", internProfile.id).in("status", ["pending", "in_progress"]);
+      return {
+        tasks: tasksRes.data || [],
+        total: totalRes.count || 0,
+        completed: completedRes.count || 0,
+        pending: pendingRes.count || 0,
+        avgScore: avg,
+      };
+    },
+    { ttl: TTL.MEDIUM, enabled: !!profileId }
+  );
 
-      const { data: subs } = await supabase.from("submissions").select("ai_score").eq("intern_id", internProfile.id).not("ai_score", "is", null);
-      const avg = subs && subs.length > 0 ? (subs.reduce((a, b) => a + (b.ai_score || 0), 0) / subs.length).toFixed(1) : "0";
-
-      setStats({ total: totalCount || 0, completed: completedCount || 0, pending: pendingCount || 0, avgScore: parseFloat(avg) });
-      setLoading(false);
-    };
-    fetchData();
-  }, [internProfile]);
+  const stats = data || { tasks: [], total: 0, completed: 0, pending: 0, avgScore: 0 };
+  const tasks = data?.tasks || [];
 
   const currentWeek = internProfile?.start_date
     ? Math.min(8, Math.max(1, Math.ceil((Date.now() - new Date(internProfile.start_date).getTime()) / (7 * 86400000))))
@@ -71,7 +81,6 @@ const StudentDashboard = () => {
           ))}
         </div>
 
-        {/* Certification Eligibility */}
         <Card className={eligible ? "border-success/30 bg-success/5" : "border-border"}>
           <CardContent className="p-4 flex items-center gap-3">
             <CheckCircle className={`h-5 w-5 ${eligible ? "text-success" : "text-muted-foreground"}`} />
@@ -89,7 +98,6 @@ const StudentDashboard = () => {
           </CardContent>
         </Card>
 
-        {/* LinkedIn CTA */}
         <Card className="border-primary/20 bg-primary/5">
           <CardContent className="p-4 flex items-center justify-between">
             <div className="flex items-center gap-3">

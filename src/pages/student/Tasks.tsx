@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import PortalLayout from "@/components/layout/PortalLayout";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -6,51 +6,40 @@ import { Clock, BookOpen, Target, Play } from "lucide-react";
 import { supabase } from "@/lib/supabaseClient";
 import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
+import { useCachedQuery } from "@/hooks/useCachedQuery";
+import { TTL, invalidateCache } from "@/lib/cache";
 
 const StudentTasks = () => {
   const { internProfile } = useAuth();
-  const [tasks, setTasks] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
   const [expandedYoutube, setExpandedYoutube] = useState<string | null>(null);
   const navigate = useNavigate();
+  const profileId = internProfile?.id;
 
-  useEffect(() => {
-    if (!internProfile) return;
-
-    const fetchTasks = async () => {
+  const { data: tasks, loading, refetch } = useCachedQuery<any[]>(
+    `tasks_${profileId}`,
+    async () => {
       let { data } = await supabase
         .from("intern_tasks")
         .select("*, tasks(*)")
-        .eq("intern_id", internProfile.id)
+        .eq("intern_id", profileId)
         .order("assigned_date", { ascending: true });
 
       if (!data || data.length === 0) {
-        const currentWeek = Math.min(8, Math.max(1, Math.ceil((Date.now() - new Date(internProfile.start_date).getTime()) / (7 * 86400000))));
-
-        const { data: available } = await supabase
-          .from("tasks")
-          .select("id")
-          .eq("field", internProfile.field)
-          .lte("week_number", currentWeek);
+        const currentWeek = Math.min(8, Math.max(1, Math.ceil((Date.now() - new Date(internProfile!.start_date).getTime()) / (7 * 86400000))));
+        const { data: available } = await supabase.from("tasks").select("id").eq("field", internProfile!.field).lte("week_number", currentWeek);
 
         if (available && available.length > 0) {
-          const inserts = available.map((t) => ({ intern_id: internProfile.id, task_id: t.id }));
-          await supabase.from("intern_tasks").insert(inserts);
-
-          const { data: refreshed } = await supabase
-            .from("intern_tasks")
-            .select("*, tasks(*)")
-            .eq("intern_id", internProfile.id)
-            .order("assigned_date", { ascending: true });
-          setTasks(refreshed || []);
+          await supabase.from("intern_tasks").insert(available.map((t) => ({ intern_id: profileId, task_id: t.id })));
+          const { data: refreshed } = await supabase.from("intern_tasks").select("*, tasks(*)").eq("intern_id", profileId).order("assigned_date", { ascending: true });
+          // Also invalidate dashboard cache since tasks changed
+          invalidateCache("dashboard_");
+          return refreshed || [];
         }
-      } else {
-        setTasks(data);
       }
-      setLoading(false);
-    };
-    fetchTasks();
-  }, [internProfile]);
+      return data || [];
+    },
+    { ttl: TTL.MEDIUM, enabled: !!profileId }
+  );
 
   const getYoutubeEmbedUrl = (url: string) => {
     const match = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([a-zA-Z0-9_-]+)/);
@@ -67,7 +56,7 @@ const StudentTasks = () => {
 
         {loading ? (
           <p className="text-sm text-muted-foreground">Loading tasks...</p>
-        ) : tasks.length === 0 ? (
+        ) : !tasks || tasks.length === 0 ? (
           <p className="text-sm text-muted-foreground">No tasks available yet. Tasks will be assigned when your internship starts.</p>
         ) : (
           <div className="grid gap-4">
@@ -117,12 +106,7 @@ const StudentTasks = () => {
                         </div>
                         <div className="flex flex-col gap-2">
                           {youtubeLinks.length > 0 && (
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              className="text-xs"
-                              onClick={() => setExpandedYoutube(isExpanded ? null : it.id)}
-                            >
+                            <Button variant="outline" size="sm" className="text-xs" onClick={() => setExpandedYoutube(isExpanded ? null : it.id)}>
                               <Play className="h-3 w-3 mr-1" /> Tutorials ({youtubeLinks.length})
                             </Button>
                           )}
@@ -132,7 +116,6 @@ const StudentTasks = () => {
                         </div>
                       </div>
 
-                      {/* YouTube Embeds */}
                       {isExpanded && youtubeLinks.length > 0 && (
                         <div className="grid gap-3 pt-2 border-t border-border">
                           {youtubeLinks.map((link: string, idx: number) => {
@@ -140,13 +123,7 @@ const StudentTasks = () => {
                             if (!embedUrl) return null;
                             return (
                               <div key={idx} className="aspect-video rounded-lg overflow-hidden bg-muted">
-                                <iframe
-                                  src={embedUrl}
-                                  title={`Tutorial ${idx + 1}`}
-                                  className="w-full h-full"
-                                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                                  allowFullScreen
-                                />
+                                <iframe src={embedUrl} title={`Tutorial ${idx + 1}`} className="w-full h-full" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowFullScreen />
                               </div>
                             );
                           })}

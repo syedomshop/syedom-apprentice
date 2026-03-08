@@ -1,32 +1,41 @@
-import { useEffect, useState } from "react";
 import PortalLayout from "@/components/layout/PortalLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress as ProgressBar } from "@/components/ui/progress";
 import { supabase } from "@/lib/supabaseClient";
 import { useAuth } from "@/contexts/AuthContext";
+import { useCachedQuery } from "@/hooks/useCachedQuery";
+import { TTL } from "@/lib/cache";
+
+interface ProgressData {
+  submissions: any[];
+  totalTasks: number;
+  completedTasks: number;
+}
 
 const Progress = () => {
   const { internProfile } = useAuth();
-  const [submissions, setSubmissions] = useState<any[]>([]);
-  const [totalTasks, setTotalTasks] = useState(0);
-  const [completedTasks, setCompletedTasks] = useState(0);
-  const [loading, setLoading] = useState(true);
+  const profileId = internProfile?.id;
 
-  useEffect(() => {
-    if (!internProfile) return;
-    const fetchData = async () => {
-      const { data: subs } = await supabase.from("submissions").select("*, tasks(title, week_number)").eq("intern_id", internProfile.id).order("created_at", { ascending: false });
-      setSubmissions(subs || []);
+  const { data, loading } = useCachedQuery<ProgressData>(
+    `progress_${profileId}`,
+    async () => {
+      const [subsRes, totalRes, completedRes] = await Promise.all([
+        supabase.from("submissions").select("*, tasks(title, week_number)").eq("intern_id", profileId).order("created_at", { ascending: false }),
+        supabase.from("intern_tasks").select("*", { count: "exact", head: true }).eq("intern_id", profileId),
+        supabase.from("intern_tasks").select("*", { count: "exact", head: true }).eq("intern_id", profileId).eq("status", "completed"),
+      ]);
+      return {
+        submissions: subsRes.data || [],
+        totalTasks: totalRes.count || 0,
+        completedTasks: completedRes.count || 0,
+      };
+    },
+    { ttl: TTL.SHORT, enabled: !!profileId }
+  );
 
-      const { count: total } = await supabase.from("intern_tasks").select("*", { count: "exact", head: true }).eq("intern_id", internProfile.id);
-      const { count: completed } = await supabase.from("intern_tasks").select("*", { count: "exact", head: true }).eq("intern_id", internProfile.id).eq("status", "completed");
-
-      setTotalTasks(total || 0);
-      setCompletedTasks(completed || 0);
-      setLoading(false);
-    };
-    fetchData();
-  }, [internProfile]);
+  const submissions = data?.submissions || [];
+  const totalTasks = data?.totalTasks || 0;
+  const completedTasks = data?.completedTasks || 0;
 
   const scored = submissions.filter(s => s.ai_score != null);
   const avgScore = scored.length > 0 ? (scored.reduce((a, b) => a + (b.ai_score || 0), 0) / scored.length).toFixed(1) : "0";
@@ -58,11 +67,7 @@ const Progress = () => {
             <span className={`text-lg font-semibold ${eligible ? "text-success" : "text-destructive"}`}>
               {eligible ? "✅ Eligible (avg ≥ 50 + all tasks)" : `❌ Not Eligible`}
             </span>
-            {!eligible && (
-              <p className="text-xs text-muted-foreground">
-                Need avg ≥ 50 and all 8 tasks completed
-              </p>
-            )}
+            {!eligible && <p className="text-xs text-muted-foreground">Need avg ≥ 50 and all 8 tasks completed</p>}
           </div>
         </div>
 
@@ -84,14 +89,8 @@ const Progress = () => {
                         <span className="portal-badge-info text-xs">Week {sub.tasks?.week_number}</span>
                         <h3 className="text-sm font-medium text-foreground">{sub.tasks?.title}</h3>
                       </div>
-                      {sub.instructor_comment && (
-                        <p className="text-xs text-foreground font-medium">
-                          📝 Feedback: {sub.instructor_comment}
-                        </p>
-                      )}
-                      {sub.intern_comment && (
-                        <p className="text-xs text-muted-foreground italic">You: {sub.intern_comment}</p>
-                      )}
+                      {sub.instructor_comment && <p className="text-xs text-foreground font-medium">📝 Feedback: {sub.instructor_comment}</p>}
+                      {sub.intern_comment && <p className="text-xs text-muted-foreground italic">You: {sub.intern_comment}</p>}
                       <span className="text-xs text-muted-foreground">{new Date(sub.created_at).toLocaleDateString()}</span>
                     </div>
                     <div className="flex items-center gap-1 ml-4">
