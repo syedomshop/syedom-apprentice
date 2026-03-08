@@ -17,6 +17,11 @@ import Notifications from "./pages/student/Notifications";
 import VerifyCertificate from "./pages/VerifyCertificate";
 import Portfolio from "./pages/Portfolio";
 import NotFound from "./pages/NotFound";
+import AdminRoute from "@/components/AdminRoute";
+import AdminDashboard from "./pages/admin/Dashboard";
+import AdminInterns from "./pages/admin/Interns";
+import AdminCertificates from "./pages/admin/Certificates";
+import AdminBatches from "./pages/admin/Batches";
 
 const queryClient = new QueryClient();
 
@@ -40,6 +45,10 @@ const App = () => (
             <Route path="/progress" element={<ProtectedRoute><Progress /></ProtectedRoute>} />
             <Route path="/notifications" element={<ProtectedRoute><Notifications /></ProtectedRoute>} />
             <Route path="/certificate" element={<ProtectedRoute><Certificate /></ProtectedRoute>} />
+            <Route path="/admin" element={<AdminRoute><AdminDashboard /></AdminRoute>} />
+            <Route path="/admin/interns" element={<AdminRoute><AdminInterns /></AdminRoute>} />
+            <Route path="/admin/certificates" element={<AdminRoute><AdminCertificates /></AdminRoute>} />
+            <Route path="/admin/batches" element={<AdminRoute><AdminBatches /></AdminRoute>} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </AuthProvider>
