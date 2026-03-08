@@ -131,7 +131,21 @@ CREATE TABLE public.certificates (
   issued_at TIMESTAMPTZ DEFAULT now()
 );
 
--- 2j. waitlist
+-- 2j. notifications
+CREATE TABLE public.notifications (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  intern_id UUID REFERENCES public.intern_profiles(id) ON DELETE CASCADE NOT NULL,
+  title TEXT NOT NULL,
+  message TEXT NOT NULL,
+  type TEXT NOT NULL DEFAULT 'info',
+  link TEXT,
+  link_label TEXT,
+  is_read BOOLEAN DEFAULT false,
+  scheduled_for TIMESTAMPTZ NOT NULL DEFAULT now(),
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+
+-- 2k. waitlist
 CREATE TABLE public.waitlist (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   name TEXT NOT NULL,
