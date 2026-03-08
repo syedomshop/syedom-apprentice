@@ -38,6 +38,7 @@ const App = () => (
             <Route path="/tasks" element={<ProtectedRoute><StudentTasks /></ProtectedRoute>} />
             <Route path="/submit" element={<ProtectedRoute><SubmitTask /></ProtectedRoute>} />
             <Route path="/progress" element={<ProtectedRoute><Progress /></ProtectedRoute>} />
+            <Route path="/notifications" element={<ProtectedRoute><Notifications /></ProtectedRoute>} />
             <Route path="/certificate" element={<ProtectedRoute><Certificate /></ProtectedRoute>} />
             <Route path="*" element={<NotFound />} />
           </Routes>

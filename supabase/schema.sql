@@ -275,6 +275,8 @@ CREATE INDEX idx_pending_offers_status ON public.pending_offers(status, send_aft
 CREATE INDEX idx_certificates_code ON public.certificates(certificate_code);
 CREATE INDEX idx_certificates_payment ON public.certificates(payment_status);
 CREATE INDEX idx_batches_status ON public.batches(status);
+CREATE INDEX idx_notifications_intern ON public.notifications(intern_id, is_read);
+CREATE INDEX idx_notifications_scheduled ON public.notifications(scheduled_for);
 
 -- =============================================
 -- pg_cron SQL (run separately after enabling pg_cron and pg_net)

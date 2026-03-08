@@ -129,7 +129,7 @@ const Landing = () => {
       <section className="py-20 px-4">
         <div className="container mx-auto text-center max-w-2xl">
           <h2 className="text-3xl font-bold text-foreground mb-4">Ready to Start?</h2>
-          <p className="text-muted-foreground mb-8">Up to 600 seats per batch. Apply now and begin your journey in tech.</p>
+          <p className="text-muted-foreground mb-8">Limited seats available. Apply now and begin your journey in tech.</p>
           <Link to="/register">
             <Button size="lg" className="text-base px-8">Apply for Internship</Button>
           </Link>
