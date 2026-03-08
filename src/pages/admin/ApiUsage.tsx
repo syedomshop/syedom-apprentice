@@ -56,8 +56,8 @@ const AdminApiUsage = () => {
   const toggleAi = () => {
     setAiPaused(!aiPaused);
     toast({
-      title: aiPaused ? "AI Resumed" : "AI Paused",
-      description: aiPaused ? "AI grading operations have been resumed." : "AI grading operations have been paused.",
+      title: aiPaused ? "Grading Resumed" : "Grading Paused",
+      description: aiPaused ? "Grading operations have been resumed." : "Grading operations have been paused.",
     });
   };
 
