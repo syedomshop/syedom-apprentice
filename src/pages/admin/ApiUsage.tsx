@@ -67,7 +67,7 @@ const AdminApiUsage = () => {
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-bold text-foreground">API Usage & Limits</h1>
-            <p className="text-muted-foreground text-sm mt-1">Monitor Gemini AI and email API usage</p>
+            <p className="text-muted-foreground text-sm mt-1">Monitor grading and email API usage</p>
           </div>
           <div className="flex gap-2">
             <Button variant={aiPaused ? "default" : "destructive"} size="sm" onClick={toggleAi}>
