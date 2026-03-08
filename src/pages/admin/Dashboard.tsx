@@ -87,7 +87,7 @@ const AdminDashboard = () => {
     { title: "Active Interns", value: stats.activeInterns, icon: Users, color: "text-primary" },
     { title: "Total Interns", value: stats.totalInterns, icon: Users, color: "text-muted-foreground" },
     { title: "Completed", value: stats.completedInterns, icon: TrendingUp, color: "text-success" },
-    { title: "Avg AI Score", value: `${stats.avgScore}%`, icon: TrendingUp, color: "text-info" },
+    { title: "Avg Score", value: `${stats.avgScore}%`, icon: TrendingUp, color: "text-info" },
     { title: "Certificates Issued", value: stats.totalCertificates, icon: Award, color: "text-warning" },
     { title: "Paid Certificates", value: stats.paidCertificates, icon: DollarSign, color: "text-success" },
     { title: "Unpaid Certificates", value: stats.unpaidCertificates, icon: DollarSign, color: "text-destructive" },
