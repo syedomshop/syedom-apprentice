@@ -1,19 +1,11 @@
 import { ReactNode } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
-  LayoutDashboard,
-  ListTodo,
-  Upload,
-  TrendingUp,
-  Users,
-  Database,
-  Activity,
-  LogOut,
-  Bot,
-  ChevronLeft,
+  LayoutDashboard, ListTodo, Upload, TrendingUp,
+  Users, Database, Activity, LogOut, Bot,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { Button } from "@/components/ui/button";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface PortalLayoutProps {
   children: ReactNode;
@@ -37,13 +29,17 @@ const adminNav = [
 const PortalLayout = ({ children, role }: PortalLayoutProps) => {
   const location = useLocation();
   const navigate = useNavigate();
+  const { signOut } = useAuth();
   const navItems = role === "admin" ? adminNav : internNav;
+
+  const handleLogout = async () => {
+    await signOut();
+    navigate("/login");
+  };
 
   return (
     <div className="flex h-screen overflow-hidden">
-      {/* Sidebar */}
       <aside className="w-64 flex-shrink-0 bg-sidebar text-sidebar-foreground flex flex-col border-r border-sidebar-border">
-        {/* Logo */}
         <div className="h-16 flex items-center px-6 border-b border-sidebar-border">
           <Bot className="h-6 w-6 text-sidebar-primary mr-2.5" />
           <div>
@@ -51,8 +47,6 @@ const PortalLayout = ({ children, role }: PortalLayoutProps) => {
             <p className="text-[10px] text-sidebar-foreground/60 uppercase tracking-wider">Internee Portal</p>
           </div>
         </div>
-
-        {/* Nav */}
         <nav className="flex-1 py-4 px-3 space-y-1">
           {navItems.map((item) => {
             const isActive = location.pathname === item.path;
@@ -73,11 +67,9 @@ const PortalLayout = ({ children, role }: PortalLayoutProps) => {
             );
           })}
         </nav>
-
-        {/* Footer */}
         <div className="p-3 border-t border-sidebar-border">
           <button
-            onClick={() => navigate("/login")}
+            onClick={handleLogout}
             className="flex items-center gap-3 px-3 py-2.5 rounded-md text-sm text-sidebar-foreground hover:bg-sidebar-accent/50 hover:text-sidebar-accent-foreground transition-colors w-full"
           >
             <LogOut className="h-4 w-4" />
@@ -85,8 +77,6 @@ const PortalLayout = ({ children, role }: PortalLayoutProps) => {
           </button>
         </div>
       </aside>
-
-      {/* Main */}
       <main className="flex-1 overflow-auto">
         <div className="p-8">{children}</div>
       </main>

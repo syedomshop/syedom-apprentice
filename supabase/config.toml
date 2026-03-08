@@ -1,0 +1,11 @@
+[project]
+id = "tmsxfbrszqwsppmbkmmd"
+
+[functions.generate-tasks]
+verify_jwt = false
+
+[functions.grade-submission]
+verify_jwt = false
+
+[functions.send-offer-letter]
+verify_jwt = false

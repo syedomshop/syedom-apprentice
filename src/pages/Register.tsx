@@ -7,6 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Bot, Eye, EyeOff } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/lib/supabaseClient";
 
 const Register = () => {
   const [form, setForm] = useState({
@@ -15,6 +16,7 @@ const Register = () => {
     password: "",
     university: "",
     field: "",
+    phone: "",
   });
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -25,15 +27,68 @@ const Register = () => {
     e.preventDefault();
     setLoading(true);
 
-    // Mock register
-    setTimeout(() => {
+    try {
+      // Check seat limit
+      const { data: seatCheck } = await supabase.rpc("check_seat_available");
+      if (!seatCheck) {
+        toast({
+          title: "Applications closed",
+          description: "Limited seats filled. No new registrations at this time.",
+          variant: "destructive",
+        });
+        setLoading(false);
+        return;
+      }
+
+      // Sign up
+      const { data: authData, error: authError } = await supabase.auth.signUp({
+        email: form.email,
+        password: form.password,
+        options: { emailRedirectTo: window.location.origin },
+      });
+
+      if (authError) throw authError;
+      if (!authData.user) throw new Error("Signup failed");
+
+      const userId = authData.user.id;
+      const internId = form.phone.slice(-4);
+
+      // Create intern profile
+      const { error: profileError } = await supabase.from("intern_profiles").insert({
+        user_id: userId,
+        name: form.name,
+        phone: form.phone,
+        intern_id: internId,
+        university: form.university,
+        field: form.field,
+      });
+
+      if (profileError) throw profileError;
+
+      // Assign intern role
+      const { error: roleError } = await supabase.from("user_roles").insert({
+        user_id: userId,
+        role: "intern",
+      });
+
+      if (roleError) throw roleError;
+
+      // Trigger offer letter edge function (fire and forget)
+      supabase.functions.invoke("send-offer-letter", {
+        body: { name: form.name, email: form.email, field: form.field, intern_id: internId },
+      }).catch(() => {});
+
       toast({
         title: "Registration successful",
-        description: "Welcome to Syedom Labs! Check your email for the offer letter.",
+        description: `Welcome to Syedom Labs! Your Intern ID is ${internId}. Check your email for the offer letter.`,
       });
+
       navigate("/intern/dashboard");
+    } catch (err: any) {
+      toast({ title: "Registration failed", description: err.message, variant: "destructive" });
+    } finally {
       setLoading(false);
-    }, 1000);
+    }
   };
 
   const updateField = (key: string, value: string) => {
@@ -60,68 +115,39 @@ const Register = () => {
             <form onSubmit={handleRegister} className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="name">Full Name</Label>
-                <Input
-                  id="name"
-                  placeholder="John Doe"
-                  value={form.name}
-                  onChange={(e) => updateField("name", e.target.value)}
-                  required
-                />
+                <Input id="name" placeholder="John Doe" value={form.name} onChange={(e) => updateField("name", e.target.value)} required />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="email">Email</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  placeholder="you@example.com"
-                  value={form.email}
-                  onChange={(e) => updateField("email", e.target.value)}
-                  required
-                />
+                <Input id="email" type="email" placeholder="you@example.com" value={form.email} onChange={(e) => updateField("email", e.target.value)} required />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="phone">Phone Number</Label>
+                <Input id="phone" type="tel" placeholder="03051234567" value={form.phone} onChange={(e) => updateField("phone", e.target.value)} required minLength={11} />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="password">Password</Label>
                 <div className="relative">
-                  <Input
-                    id="password"
-                    type={showPassword ? "text" : "password"}
-                    placeholder="••••••••"
-                    value={form.password}
-                    onChange={(e) => updateField("password", e.target.value)}
-                    required
-                    minLength={8}
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                  >
+                  <Input id="password" type={showPassword ? "text" : "password"} placeholder="••••••••" value={form.password} onChange={(e) => updateField("password", e.target.value)} required minLength={8} />
+                  <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
                     {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                   </button>
                 </div>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="university">University / College</Label>
-                <Input
-                  id="university"
-                  placeholder="Your university name"
-                  value={form.university}
-                  onChange={(e) => updateField("university", e.target.value)}
-                  required
-                />
+                <Input id="university" placeholder="Your university name" value={form.university} onChange={(e) => updateField("university", e.target.value)} required />
               </div>
               <div className="space-y-2">
                 <Label>Internship Field</Label>
                 <Select value={form.field} onValueChange={(v) => updateField("field", v)} required>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select field" />
-                  </SelectTrigger>
+                  <SelectTrigger><SelectValue placeholder="Select field" /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="web-development">Web Development</SelectItem>
-                    <SelectItem value="ai-ml">AI / Machine Learning</SelectItem>
-                    <SelectItem value="mobile-dev">Mobile Development</SelectItem>
-                    <SelectItem value="data-science">Data Science</SelectItem>
-                    <SelectItem value="ui-ux">UI/UX Design</SelectItem>
+                    <SelectItem value="Web Development">Web Development</SelectItem>
+                    <SelectItem value="AI / Machine Learning">AI / Machine Learning</SelectItem>
+                    <SelectItem value="Mobile Development">Mobile Development</SelectItem>
+                    <SelectItem value="Data Science">Data Science</SelectItem>
+                    <SelectItem value="UI/UX Design">UI/UX Design</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -131,9 +157,7 @@ const Register = () => {
             </form>
             <p className="text-sm text-center text-muted-foreground mt-4">
               Already have an account?{" "}
-              <Link to="/login" className="text-primary hover:underline font-medium">
-                Sign in
-              </Link>
+              <Link to="/login" className="text-primary hover:underline font-medium">Sign in</Link>
             </p>
           </CardContent>
         </Card>

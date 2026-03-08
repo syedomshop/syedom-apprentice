@@ -1,50 +1,11 @@
+import { useEffect, useState } from "react";
 import PortalLayout from "@/components/layout/PortalLayout";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ExternalLink, Clock, BookOpen } from "lucide-react";
-
-const tasks = [
-  {
-    id: 1,
-    title: "Build a responsive navigation component",
-    description: "Create a navigation bar that adapts to different screen sizes using CSS flexbox and media queries. Include a hamburger menu for mobile views.",
-    difficulty: "Beginner",
-    estimatedTime: "45 min",
-    learningObjective: "Understanding responsive design patterns",
-    youtubeLink: "https://youtube.com",
-    status: "pending",
-  },
-  {
-    id: 2,
-    title: "Implement form validation with Zod",
-    description: "Build a registration form with proper validation using Zod schema library. Handle error states and display meaningful messages.",
-    difficulty: "Intermediate",
-    estimatedTime: "60 min",
-    learningObjective: "Schema validation in TypeScript",
-    youtubeLink: "https://youtube.com",
-    status: "in-progress",
-  },
-  {
-    id: 3,
-    title: "Create a reusable card component",
-    description: "Design and implement a flexible card component that supports different variants: default, outlined, and elevated.",
-    difficulty: "Beginner",
-    estimatedTime: "30 min",
-    learningObjective: "Component composition patterns",
-    youtubeLink: "https://youtube.com",
-    status: "completed",
-  },
-  {
-    id: 4,
-    title: "Build a custom hook for API fetching",
-    description: "Create a reusable React hook that handles data fetching, loading states, and error handling with proper TypeScript types.",
-    difficulty: "Intermediate",
-    estimatedTime: "50 min",
-    learningObjective: "Custom hooks and data fetching",
-    youtubeLink: "https://youtube.com",
-    status: "pending",
-  },
-];
+import { supabase } from "@/lib/supabaseClient";
+import { useAuth } from "@/contexts/AuthContext";
+import { useNavigate } from "react-router-dom";
 
 const difficultyColor = (d: string) => {
   if (d === "Intermediate") return "portal-badge-warning";
@@ -54,11 +15,56 @@ const difficultyColor = (d: string) => {
 
 const statusColor = (s: string) => {
   if (s === "completed") return "portal-badge-success";
-  if (s === "in-progress") return "portal-badge-info";
+  if (s === "in_progress") return "portal-badge-info";
   return "portal-badge-warning";
 };
 
 const InternTasks = () => {
+  const { internProfile } = useAuth();
+  const [tasks, setTasks] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    if (!internProfile) return;
+    const fetch = async () => {
+      // Get assigned tasks
+      let { data } = await supabase
+        .from("intern_tasks")
+        .select("*, tasks(*)")
+        .eq("intern_id", internProfile.id)
+        .order("assigned_date", { ascending: false });
+
+      // If no tasks assigned, auto-assign from pool
+      if (!data || data.length === 0) {
+        const { data: available } = await supabase
+          .from("tasks")
+          .select("id")
+          .limit(5);
+
+        if (available && available.length > 0) {
+          const inserts = available.map((t) => ({
+            intern_id: internProfile.id,
+            task_id: t.id,
+          }));
+          await supabase.from("intern_tasks").insert(inserts);
+
+          // Re-fetch
+          const { data: refreshed } = await supabase
+            .from("intern_tasks")
+            .select("*, tasks(*)")
+            .eq("intern_id", internProfile.id)
+            .order("assigned_date", { ascending: false });
+          setTasks(refreshed || []);
+        }
+      } else {
+        setTasks(data);
+      }
+      setLoading(false);
+    };
+    fetch();
+  }, [internProfile]);
+
   return (
     <PortalLayout role="intern">
       <div className="space-y-6">
@@ -67,44 +73,56 @@ const InternTasks = () => {
           <p className="text-sm text-muted-foreground mt-1">Your assigned development tasks</p>
         </div>
 
-        <div className="grid gap-4">
-          {tasks.map((task) => (
-            <Card key={task.id}>
-              <CardContent className="p-5">
-                <div className="flex items-start justify-between gap-4">
-                  <div className="flex-1 space-y-3">
-                    <div className="flex items-center gap-2">
-                      <h3 className="text-sm font-medium text-foreground">{task.title}</h3>
-                      <span className={statusColor(task.status)}>
-                        {task.status === "in-progress" ? "In Progress" : task.status.charAt(0).toUpperCase() + task.status.slice(1)}
-                      </span>
+        {loading ? (
+          <p className="text-sm text-muted-foreground">Loading tasks...</p>
+        ) : tasks.length === 0 ? (
+          <p className="text-sm text-muted-foreground">No tasks available yet. Check back later!</p>
+        ) : (
+          <div className="grid gap-4">
+            {tasks.map((it) => (
+              <Card key={it.id}>
+                <CardContent className="p-5">
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="flex-1 space-y-3">
+                      <div className="flex items-center gap-2">
+                        <h3 className="text-sm font-medium text-foreground">{it.tasks?.title}</h3>
+                        <span className={statusColor(it.status)}>
+                          {it.status === "in_progress" ? "In Progress" : it.status.charAt(0).toUpperCase() + it.status.slice(1)}
+                        </span>
+                      </div>
+                      <p className="text-sm text-muted-foreground">{it.tasks?.description}</p>
+                      <div className="flex flex-wrap items-center gap-3 text-xs">
+                        <span className={difficultyColor(it.tasks?.difficulty || "Beginner")}>{it.tasks?.difficulty}</span>
+                        <span className="flex items-center gap-1 text-muted-foreground">
+                          <Clock className="h-3 w-3" /> {it.tasks?.estimated_time}
+                        </span>
+                        {it.tasks?.learning_objective && (
+                          <span className="flex items-center gap-1 text-muted-foreground">
+                            <BookOpen className="h-3 w-3" /> {it.tasks.learning_objective}
+                          </span>
+                        )}
+                      </div>
                     </div>
-                    <p className="text-sm text-muted-foreground">{task.description}</p>
-                    <div className="flex flex-wrap items-center gap-3 text-xs">
-                      <span className={difficultyColor(task.difficulty)}>{task.difficulty}</span>
-                      <span className="flex items-center gap-1 text-muted-foreground">
-                        <Clock className="h-3 w-3" /> {task.estimatedTime}
-                      </span>
-                      <span className="flex items-center gap-1 text-muted-foreground">
-                        <BookOpen className="h-3 w-3" /> {task.learningObjective}
-                      </span>
+                    <div className="flex flex-col gap-2">
+                      {it.tasks?.youtube_link && (
+                        <a href={it.tasks.youtube_link} target="_blank" rel="noopener noreferrer">
+                          <Button variant="outline" size="sm" className="text-xs">
+                            <ExternalLink className="h-3 w-3 mr-1" /> Tutorial
+                          </Button>
+                        </a>
+                      )}
+                      {it.status !== "completed" && (
+                        <Button size="sm" className="text-xs" onClick={() => navigate("/intern/submit")}>
+                          Submit
+                        </Button>
+                      )}
                     </div>
                   </div>
-                  <div className="flex flex-col gap-2">
-                    <a href={task.youtubeLink} target="_blank" rel="noopener noreferrer">
-                      <Button variant="outline" size="sm" className="text-xs">
-                        <ExternalLink className="h-3 w-3 mr-1" /> Tutorial
-                      </Button>
-                    </a>
-                    {task.status !== "completed" && (
-                      <Button size="sm" className="text-xs">Submit</Button>
-                    )}
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        )}
       </div>
     </PortalLayout>
   );

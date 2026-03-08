@@ -3,6 +3,8 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { AuthProvider } from "@/contexts/AuthContext";
+import ProtectedRoute from "@/components/ProtectedRoute";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
 import InternDashboard from "./pages/intern/Dashboard";
@@ -23,20 +25,22 @@ const App = () => (
       <Toaster />
       <Sonner />
       <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<Navigate to="/login" replace />} />
-          <Route path="/login" element={<Login />} />
-          <Route path="/register" element={<Register />} />
-          <Route path="/intern/dashboard" element={<InternDashboard />} />
-          <Route path="/intern/tasks" element={<InternTasks />} />
-          <Route path="/intern/submit" element={<SubmitTask />} />
-          <Route path="/intern/progress" element={<InternProgress />} />
-          <Route path="/admin/dashboard" element={<AdminDashboard />} />
-          <Route path="/admin/interns" element={<InternManagement />} />
-          <Route path="/admin/tasks" element={<TaskPool />} />
-          <Route path="/admin/ai-usage" element={<AIUsage />} />
-          <Route path="*" element={<NotFound />} />
-        </Routes>
+        <AuthProvider>
+          <Routes>
+            <Route path="/" element={<Navigate to="/login" replace />} />
+            <Route path="/login" element={<Login />} />
+            <Route path="/register" element={<Register />} />
+            <Route path="/intern/dashboard" element={<ProtectedRoute requiredRole="intern"><InternDashboard /></ProtectedRoute>} />
+            <Route path="/intern/tasks" element={<ProtectedRoute requiredRole="intern"><InternTasks /></ProtectedRoute>} />
+            <Route path="/intern/submit" element={<ProtectedRoute requiredRole="intern"><SubmitTask /></ProtectedRoute>} />
+            <Route path="/intern/progress" element={<ProtectedRoute requiredRole="intern"><InternProgress /></ProtectedRoute>} />
+            <Route path="/admin/dashboard" element={<ProtectedRoute requiredRole="admin"><AdminDashboard /></ProtectedRoute>} />
+            <Route path="/admin/interns" element={<ProtectedRoute requiredRole="admin"><InternManagement /></ProtectedRoute>} />
+            <Route path="/admin/tasks" element={<ProtectedRoute requiredRole="admin"><TaskPool /></ProtectedRoute>} />
+            <Route path="/admin/ai-usage" element={<ProtectedRoute requiredRole="admin"><AIUsage /></ProtectedRoute>} />
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </AuthProvider>
       </BrowserRouter>
     </TooltipProvider>
   </QueryClientProvider>
