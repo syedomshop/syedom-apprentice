@@ -83,7 +83,7 @@ const AdminLogs = () => {
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-bold text-foreground">Logs & Notifications</h1>
-            <p className="text-muted-foreground text-sm mt-1">Email logs, AI grading history, and system notifications</p>
+            <p className="text-muted-foreground text-sm mt-1">Email logs, grading history, and system notifications</p>
           </div>
           <Button variant="outline" size="sm" onClick={fetchLogs} disabled={loading}>
             <RefreshCw className={`h-4 w-4 mr-2 ${loading ? "animate-spin" : ""}`} />
