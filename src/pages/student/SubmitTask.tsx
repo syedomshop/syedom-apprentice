@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Upload } from "lucide-react";
+import { Upload, CheckCircle, AlertTriangle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/lib/supabaseClient";
 import { useAuth } from "@/contexts/AuthContext";
@@ -18,6 +18,7 @@ const SubmitTask = () => {
   const [explanation, setExplanation] = useState("");
   const [loading, setLoading] = useState(false);
   const [tasks, setTasks] = useState<any[]>([]);
+  const [repoStatus, setRepoStatus] = useState<"idle" | "checking" | "valid" | "invalid">("idle");
   const { toast } = useToast();
 
   useEffect(() => {
@@ -30,6 +31,26 @@ const SubmitTask = () => {
       .then(({ data }) => setTasks(data || []));
   }, [internProfile]);
 
+  // Validate GitHub repo
+  const validateRepo = async (url: string) => {
+    if (!url) { setRepoStatus("idle"); return; }
+    const match = url.match(/github\.com\/([^\/]+\/[^\/]+)/);
+    if (!match) { setRepoStatus("invalid"); return; }
+
+    setRepoStatus("checking");
+    try {
+      const res = await fetch(`https://api.github.com/repos/${match[1].replace(/\.git$/, "")}`);
+      setRepoStatus(res.ok ? "valid" : "invalid");
+    } catch {
+      setRepoStatus("invalid");
+    }
+  };
+
+  useEffect(() => {
+    const timer = setTimeout(() => validateRepo(repoLink), 800);
+    return () => clearTimeout(timer);
+  }, [repoLink]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!internProfile) return;
@@ -39,7 +60,7 @@ const SubmitTask = () => {
       const { error } = await supabase.from("submissions").insert({
         intern_id: internProfile.id,
         task_id: taskId,
-        repo_link: repoLink,
+        repo_link: repoLink || null,
         explanation,
       });
 
@@ -47,7 +68,6 @@ const SubmitTask = () => {
 
       await supabase.from("intern_tasks").update({ status: "completed" }).eq("intern_id", internProfile.id).eq("task_id", taskId);
 
-      // Trigger AI grading
       supabase.functions.invoke("grade-submission", {
         body: { repo_link: repoLink, explanation, task_id: taskId, intern_id: internProfile.id },
       }).catch(() => {});
@@ -57,6 +77,7 @@ const SubmitTask = () => {
       setTaskId("");
       setRepoLink("");
       setExplanation("");
+      setRepoStatus("idle");
 
       const { data: refreshed } = await supabase.from("intern_tasks").select("*, tasks(*)").eq("intern_id", internProfile.id).in("status", ["pending", "in_progress"]);
       setTasks(refreshed || []);
@@ -93,7 +114,23 @@ const SubmitTask = () => {
               </div>
               <div className="space-y-2">
                 <Label htmlFor="repo">GitHub Repository Link</Label>
-                <Input id="repo" type="url" placeholder="https://github.com/username/repo" value={repoLink} onChange={(e) => setRepoLink(e.target.value)} />
+                <div className="relative">
+                  <Input
+                    id="repo"
+                    type="url"
+                    placeholder="https://github.com/username/repo"
+                    value={repoLink}
+                    onChange={(e) => setRepoLink(e.target.value)}
+                  />
+                  {repoStatus === "valid" && <CheckCircle className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-success" />}
+                  {repoStatus === "invalid" && <AlertTriangle className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-destructive" />}
+                </div>
+                {repoStatus === "invalid" && (
+                  <p className="text-xs text-destructive">Repository not found or not accessible. Please check the URL.</p>
+                )}
+                {repoStatus === "checking" && (
+                  <p className="text-xs text-muted-foreground">Verifying repository...</p>
+                )}
               </div>
               <div className="space-y-2">
                 <Label htmlFor="explanation">Report / Explanation</Label>

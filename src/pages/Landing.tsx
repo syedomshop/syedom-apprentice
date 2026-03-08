@@ -1,7 +1,7 @@
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Rocket, Code, Brain, BarChart3, Smartphone, CheckCircle, ArrowRight } from "lucide-react";
+import { Rocket, Code, Brain, BarChart3, Smartphone, CheckCircle, ArrowRight, Award, Shield } from "lucide-react";
 
 const roles = [
   { icon: Code, title: "Web Development Intern", desc: "Build modern web applications with React, Node.js, and more" },
@@ -12,9 +12,9 @@ const roles = [
 
 const steps = [
   { step: "01", title: "Apply Online", desc: "Fill out the application form with your details" },
-  { step: "02", title: "Get Your Offer", desc: "Receive your official offer letter via email" },
+  { step: "02", title: "Get Your Offer", desc: "Receive your official offer letter via email within hours" },
   { step: "03", title: "Complete Tasks", desc: "Work through 8 weeks of real-world projects" },
-  { step: "04", title: "Get Certified", desc: "Earn your certificate upon successful completion" },
+  { step: "04", title: "Get Certified", desc: "Earn your verifiable certificate upon completion" },
 ];
 
 const Landing = () => {
@@ -28,6 +28,9 @@ const Landing = () => {
             <span className="font-semibold text-lg text-foreground">Syedom Labs</span>
           </div>
           <div className="flex items-center gap-3">
+            <Link to="/verify">
+              <Button variant="ghost" size="sm"><Shield className="h-4 w-4 mr-1" /> Verify Certificate</Button>
+            </Link>
             <Link to="/login">
               <Button variant="ghost" size="sm">Sign In</Button>
             </Link>
@@ -108,9 +111,10 @@ const Landing = () => {
             {[
               "AI-powered project evaluation and feedback",
               "8 weeks of structured, real-world tasks",
-              "Industry-recognized completion certificate",
+              "Verifiable completion certificate with unique code",
+              "Public portfolio page to showcase your work",
               "Fully automated — no waiting, no delays",
-              "Handles thousands of students simultaneously",
+              "GitHub repo validation and anti-cheat detection",
             ].map((f) => (
               <div key={f} className="flex items-center gap-3 p-4 bg-card rounded-lg border border-border">
                 <CheckCircle className="h-5 w-5 text-success flex-shrink-0" />
@@ -125,7 +129,7 @@ const Landing = () => {
       <section className="py-20 px-4">
         <div className="container mx-auto text-center max-w-2xl">
           <h2 className="text-3xl font-bold text-foreground mb-4">Ready to Start?</h2>
-          <p className="text-muted-foreground mb-8">Limited seats available. Apply now and begin your journey in tech.</p>
+          <p className="text-muted-foreground mb-8">Limited to 50 seats. Apply now and begin your journey in tech.</p>
           <Link to="/register">
             <Button size="lg" className="text-base px-8">Apply for Internship</Button>
           </Link>
@@ -135,6 +139,9 @@ const Landing = () => {
       {/* Footer */}
       <footer className="border-t border-border py-8 px-4">
         <div className="container mx-auto text-center text-sm text-muted-foreground">
+          <div className="flex items-center justify-center gap-4 mb-2">
+            <Link to="/verify" className="hover:text-foreground transition-colors">Verify Certificate</Link>
+          </div>
           <p>© {new Date().getFullYear()} Syedom Labs. All rights reserved.</p>
           <p className="mt-1">CEO: Syed Hasnat Ali · HR: M. Sohaib Ali</p>
         </div>

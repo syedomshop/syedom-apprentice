@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import PortalLayout from "@/components/layout/PortalLayout";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ExternalLink, Clock, BookOpen } from "lucide-react";
+import { ExternalLink, Clock, BookOpen, Target } from "lucide-react";
 import { supabase } from "@/lib/supabaseClient";
 import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
@@ -17,14 +17,12 @@ const StudentTasks = () => {
     if (!internProfile) return;
 
     const fetchTasks = async () => {
-      // Get assigned tasks
       let { data } = await supabase
         .from("intern_tasks")
         .select("*, tasks(*)")
         .eq("intern_id", internProfile.id)
         .order("assigned_date", { ascending: true });
 
-      // If no tasks, auto-assign from task pool for current week
       if (!data || data.length === 0) {
         const currentWeek = Math.min(8, Math.max(1, Math.ceil((Date.now() - new Date(internProfile.start_date).getTime()) / (7 * 86400000))));
 
@@ -80,6 +78,13 @@ const StudentTasks = () => {
                         </span>
                       </div>
                       <p className="text-sm text-muted-foreground">{it.tasks?.description}</p>
+
+                      {it.tasks?.mentor_explanation && (
+                        <p className="text-xs text-muted-foreground italic border-l-2 border-primary/30 pl-3">
+                          💡 {it.tasks.mentor_explanation}
+                        </p>
+                      )}
+
                       <div className="flex flex-wrap items-center gap-3 text-xs">
                         <span className="text-muted-foreground">{it.tasks?.difficulty}</span>
                         {it.tasks?.estimated_time && (
@@ -90,6 +95,11 @@ const StudentTasks = () => {
                         {it.tasks?.learning_objective && (
                           <span className="flex items-center gap-1 text-muted-foreground">
                             <BookOpen className="h-3 w-3" /> {it.tasks.learning_objective}
+                          </span>
+                        )}
+                        {it.tasks?.deliverable && (
+                          <span className="flex items-center gap-1 text-muted-foreground">
+                            <Target className="h-3 w-3" /> {it.tasks.deliverable}
                           </span>
                         )}
                       </div>
