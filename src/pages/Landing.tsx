@@ -114,7 +114,7 @@ const Landing = () => {
               "Verifiable completion certificate with unique code",
               "Public portfolio page to showcase your work",
               "GitHub-based submissions — no file uploads needed",
-              "3-month batch system — up to 600 interns per batch",
+              "3-month structured batch system with cohort-based learning",
             ].map((f) => (
               <div key={f} className="flex items-center gap-3 p-4 bg-card rounded-lg border border-border">
                 <CheckCircle className="h-5 w-5 text-success flex-shrink-0" />
