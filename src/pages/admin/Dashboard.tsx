@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import AdminLayout from "@/components/layout/AdminLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { supabase } from "@/lib/supabaseClient";
+import { cn } from "@/lib/utils";
 import { Users, Award, Clock, TrendingUp, Mail, DollarSign } from "lucide-react";
 
 interface Stats {
