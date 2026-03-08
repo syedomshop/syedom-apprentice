@@ -171,7 +171,7 @@ const AdminLogs = () => {
                         <TableRow>
                           <TableHead>Repo Link</TableHead>
                           <TableHead>Status</TableHead>
-                          <TableHead>AI Score</TableHead>
+                          <TableHead>Score</TableHead>
                           <TableHead>Feedback</TableHead>
                           <TableHead>Date</TableHead>
                         </TableRow>

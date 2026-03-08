@@ -105,7 +105,7 @@ const AdminAutomations = () => {
   };
 
   const categories = [
-    { key: "ai" as const, label: "AI Operations", icon: Brain },
+    { key: "ai" as const, label: "Core Operations", icon: Brain },
     { key: "email" as const, label: "Email Automations", icon: Mail },
     { key: "scheduling" as const, label: "Scheduled Jobs", icon: Clock },
   ];

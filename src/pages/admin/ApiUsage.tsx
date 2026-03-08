@@ -119,7 +119,7 @@ const AdminApiUsage = () => {
 
           <Card>
             <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-xs font-medium text-muted-foreground uppercase tracking-wider">AI Status</CardTitle>
+              <CardTitle className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Grading Status</CardTitle>
               {aiPaused ? <Pause className="h-4 w-4 text-destructive" /> : <Play className="h-4 w-4 text-success" />}
             </CardHeader>
             <CardContent>
@@ -127,7 +127,7 @@ const AdminApiUsage = () => {
                 {aiPaused ? "Paused" : "Active"}
               </Badge>
               <p className="text-xs text-muted-foreground mt-2">
-                {aiPaused ? "AI operations are paused" : "AI grading is running normally"}
+                {aiPaused ? "Grading operations are paused" : "Grading is running normally"}
               </p>
             </CardContent>
           </Card>
