@@ -257,6 +257,11 @@ CREATE POLICY "Authenticated can read certificates" ON public.certificates FOR S
 CREATE POLICY "Authenticated can update own certificate" ON public.certificates FOR UPDATE TO authenticated USING (intern_id = public.get_intern_profile_id(auth.uid()));
 CREATE POLICY "Service role can manage certificates" ON public.certificates FOR ALL TO service_role USING (true);
 
+-- notifications
+CREATE POLICY "Interns can read own notifications" ON public.notifications FOR SELECT TO authenticated USING (intern_id = public.get_intern_profile_id(auth.uid()));
+CREATE POLICY "Interns can update own notifications" ON public.notifications FOR UPDATE TO authenticated USING (intern_id = public.get_intern_profile_id(auth.uid()));
+CREATE POLICY "Service role can manage notifications" ON public.notifications FOR ALL TO service_role USING (true);
+
 -- waitlist
 CREATE POLICY "Anyone can insert waitlist" ON public.waitlist FOR INSERT TO anon, authenticated WITH CHECK (true);
 CREATE POLICY "Service role can manage waitlist" ON public.waitlist FOR ALL TO service_role USING (true);
