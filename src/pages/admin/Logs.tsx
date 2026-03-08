@@ -83,7 +83,7 @@ const AdminLogs = () => {
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-bold text-foreground">Logs & Notifications</h1>
-            <p className="text-muted-foreground text-sm mt-1">Email logs, AI grading history, and system notifications</p>
+            <p className="text-muted-foreground text-sm mt-1">Email logs, grading history, and system notifications</p>
           </div>
           <Button variant="outline" size="sm" onClick={fetchLogs} disabled={loading}>
             <RefreshCw className={`h-4 w-4 mr-2 ${loading ? "animate-spin" : ""}`} />
@@ -97,7 +97,7 @@ const AdminLogs = () => {
               <Mail className="h-4 w-4" /> Email Log ({offers.length})
             </TabsTrigger>
             <TabsTrigger value="grading" className="gap-2">
-              <Brain className="h-4 w-4" /> AI Grading ({submissions.length})
+              <Brain className="h-4 w-4" /> Grading ({submissions.length})
             </TabsTrigger>
             <TabsTrigger value="notifications" className="gap-2">
               <Bell className="h-4 w-4" /> Notifications ({notifications.length})
@@ -171,7 +171,7 @@ const AdminLogs = () => {
                         <TableRow>
                           <TableHead>Repo Link</TableHead>
                           <TableHead>Status</TableHead>
-                          <TableHead>AI Score</TableHead>
+                          <TableHead>Score</TableHead>
                           <TableHead>Feedback</TableHead>
                           <TableHead>Date</TableHead>
                         </TableRow>
