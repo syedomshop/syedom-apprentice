@@ -41,7 +41,13 @@ const Login = () => {
       return;
     }
 
-    navigate("/dashboard");
+    // Redirect admins to admin dashboard
+    const { isAdminEmail } = await import("@/lib/adminConfig");
+    if (isAdminEmail(data.user.email)) {
+      navigate("/admin");
+    } else {
+      navigate("/dashboard");
+    }
     setLoading(false);
   };
 
