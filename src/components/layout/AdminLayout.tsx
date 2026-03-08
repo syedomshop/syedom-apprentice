@@ -25,6 +25,8 @@ const adminNavItems = [
   { label: "Batches", icon: Layers, path: "/admin/batches" },
   { label: "API Usage", icon: Cpu, path: "/admin/api-usage" },
   { label: "Revenue", icon: DollarSign, path: "/admin/revenue" },
+  { label: "Automations", icon: Settings, path: "/admin/automations" },
+  { label: "Notifications", icon: Bell, path: "/admin/notifications" },
   { label: "Logs", icon: FileText, path: "/admin/logs" },
 ];
 

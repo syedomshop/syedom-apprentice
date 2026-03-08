@@ -59,6 +59,8 @@ const App = () => (
             <Route path="/admin/api-usage" element={<AdminRoute><AdminApiUsage /></AdminRoute>} />
             <Route path="/admin/revenue" element={<AdminRoute><AdminRevenue /></AdminRoute>} />
             <Route path="/admin/logs" element={<AdminRoute><AdminLogs /></AdminRoute>} />
+            <Route path="/admin/automations" element={<AdminRoute><AdminAutomations /></AdminRoute>} />
+            <Route path="/admin/notifications" element={<AdminRoute><AdminNotificationsPage /></AdminRoute>} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </AuthProvider>
