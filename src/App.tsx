@@ -28,6 +28,9 @@ import AdminRevenue from "./pages/admin/Revenue";
 import AdminLogs from "./pages/admin/Logs";
 import AdminAutomations from "./pages/admin/Automations";
 import AdminNotificationsPage from "./pages/admin/Notifications";
+import InternDetail from "./pages/admin/InternDetail";
+import CertificateEditor from "./pages/admin/CertificateEditor";
+import SystemHealth from "./pages/admin/SystemHealth";
 
 const queryClient = new QueryClient();
 
@@ -61,6 +64,9 @@ const App = () => (
             <Route path="/admin/logs" element={<AdminRoute><AdminLogs /></AdminRoute>} />
             <Route path="/admin/automations" element={<AdminRoute><AdminAutomations /></AdminRoute>} />
             <Route path="/admin/notifications" element={<AdminRoute><AdminNotificationsPage /></AdminRoute>} />
+            <Route path="/admin/interns/:id" element={<AdminRoute><InternDetail /></AdminRoute>} />
+            <Route path="/admin/certificate-editor" element={<AdminRoute><CertificateEditor /></AdminRoute>} />
+            <Route path="/admin/system-health" element={<AdminRoute><SystemHealth /></AdminRoute>} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </AuthProvider>

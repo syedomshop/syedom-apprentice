@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import AdminLayout from "@/components/layout/AdminLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -38,6 +39,7 @@ const AdminInterns = () => {
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
+  const navigate = useNavigate();
 
   const fetchInterns = async () => {
     setLoading(true);
@@ -176,7 +178,7 @@ const AdminInterns = () => {
                       </TableRow>
                     ) : (
                       filtered.map((intern) => (
-                        <TableRow key={intern.id}>
+                        <TableRow key={intern.id} className="cursor-pointer hover:bg-muted/50" onClick={() => navigate(`/admin/interns/${intern.id}`)}>
                           <TableCell>
                             <div>
                               <p className="font-medium text-foreground">{intern.name}</p>

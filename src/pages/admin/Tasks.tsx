@@ -12,6 +12,7 @@ import {
 import { supabase } from "@/lib/supabaseClient";
 import { RefreshCw, BookOpen } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import CreateTaskDialog from "@/components/admin/CreateTaskDialog";
 
 interface Task {
   id: string;
@@ -88,10 +89,13 @@ const AdminTasks = () => {
             <h1 className="text-2xl font-bold text-foreground">Task Management</h1>
             <p className="text-muted-foreground text-sm mt-1">{tasks.length} total tasks</p>
           </div>
-          <Button variant="outline" size="sm" onClick={fetchData} disabled={loading}>
-            <RefreshCw className={`h-4 w-4 mr-2 ${loading ? "animate-spin" : ""}`} />
-            Refresh
-          </Button>
+          <div className="flex gap-2">
+            <CreateTaskDialog batches={batches} onCreated={fetchData} />
+            <Button variant="outline" size="sm" onClick={fetchData} disabled={loading}>
+              <RefreshCw className={`h-4 w-4 mr-2 ${loading ? "animate-spin" : ""}`} />
+              Refresh
+            </Button>
+          </div>
         </div>
 
         <div className="flex gap-3">
