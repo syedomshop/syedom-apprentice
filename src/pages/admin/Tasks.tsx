@@ -12,6 +12,7 @@ import {
 import { supabase } from "@/lib/supabaseClient";
 import { RefreshCw, BookOpen } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import CreateTaskDialog from "@/components/admin/CreateTaskDialog";
 
 interface Task {
   id: string;
