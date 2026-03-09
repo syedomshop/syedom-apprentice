@@ -39,6 +39,7 @@ const AdminInterns = () => {
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
+  const navigate = useNavigate();
 
   const fetchInterns = async () => {
     setLoading(true);
