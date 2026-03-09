@@ -178,7 +178,7 @@ const AdminInterns = () => {
                       </TableRow>
                     ) : (
                       filtered.map((intern) => (
-                        <TableRow key={intern.id}>
+                        <TableRow key={intern.id} className="cursor-pointer hover:bg-muted/50" onClick={() => navigate(`/admin/interns/${intern.id}`)}>
                           <TableCell>
                             <div>
                               <p className="font-medium text-foreground">{intern.name}</p>
