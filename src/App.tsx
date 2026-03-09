@@ -28,6 +28,9 @@ import AdminRevenue from "./pages/admin/Revenue";
 import AdminLogs from "./pages/admin/Logs";
 import AdminAutomations from "./pages/admin/Automations";
 import AdminNotificationsPage from "./pages/admin/Notifications";
+import InternDetail from "./pages/admin/InternDetail";
+import CertificateEditor from "./pages/admin/CertificateEditor";
+import SystemHealth from "./pages/admin/SystemHealth";
 
 const queryClient = new QueryClient();
 
