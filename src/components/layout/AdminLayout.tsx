@@ -30,6 +30,8 @@ const adminNavItems = [
   { label: "Automations", icon: Settings, path: "/admin/automations" },
   { label: "Notifications", icon: Bell, path: "/admin/notifications" },
   { label: "Logs", icon: FileText, path: "/admin/logs" },
+  { label: "Certificate Editor", icon: Palette, path: "/admin/certificate-editor" },
+  { label: "System Health", icon: HeartPulse, path: "/admin/system-health" },
 ];
 
 const AdminLayout = ({ children }: { children: ReactNode }) => {
