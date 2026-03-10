@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
 import { Eye, EyeOff } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/lib/supabaseClient";
@@ -17,6 +18,12 @@ const ROLES = [
   "Flutter Developer",
 ];
 
+const LEVELS = [
+  { value: "beginner", label: "Beginner — Just getting started" },
+  { value: "intermediate", label: "Intermediate — Some project experience" },
+  { value: "expert", label: "Expert — Professional level" },
+];
+
 const Register = () => {
   const [form, setForm] = useState({
     name: "",
@@ -26,6 +33,8 @@ const Register = () => {
     field: "",
     github_username: "",
     resume_text: "",
+    experience_level: "",
+    experience_description: "",
   });
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -34,7 +43,7 @@ const Register = () => {
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (loading) return; // prevent double submit
+    if (loading) return;
     setLoading(true);
 
     try {
@@ -47,7 +56,7 @@ const Register = () => {
         return;
       }
 
-      // 2. Sign up (disable auto-confirm email — we send our own via Resend)
+      // 2. Sign up
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email: form.email,
         password: form.password,
@@ -58,23 +67,13 @@ const Register = () => {
       });
 
       if (authError) {
-        // Friendly message for rate limit
         if (authError.message?.toLowerCase().includes("rate limit") || authError.status === 429) {
-          toast({
-            title: "Too many attempts",
-            description: "Please wait a few minutes before trying again.",
-            variant: "destructive",
-          });
+          toast({ title: "Too many attempts", description: "Please wait a few minutes before trying again.", variant: "destructive" });
           setLoading(false);
           return;
         }
-        // Handle "user already exists" — they may have signed up but profile insert failed
         if (authError.message?.toLowerCase().includes("already registered") || authError.message?.toLowerCase().includes("already been registered")) {
-          toast({
-            title: "Account exists",
-            description: "This email is already registered. Try signing in instead.",
-            variant: "destructive",
-          });
+          toast({ title: "Account exists", description: "This email is already registered. Try signing in instead.", variant: "destructive" });
           setLoading(false);
           return;
         }
@@ -103,16 +102,13 @@ const Register = () => {
         github_username: form.github_username || null,
         batch_id: activeBatch || null,
         start_date: startDateStr,
+        experience_level: form.experience_level || null,
+        experience_description: form.experience_description || null,
       });
 
       if (profileError) {
-        // If profile already exists (duplicate username/email), give helpful message
         if (profileError.message?.includes("duplicate") || profileError.message?.includes("unique")) {
-          toast({
-            title: "Profile conflict",
-            description: "This username or email is already taken. Try a different one.",
-            variant: "destructive",
-          });
+          toast({ title: "Profile conflict", description: "This username or email is already taken. Try a different one.", variant: "destructive" });
           setLoading(false);
           return;
         }
@@ -120,10 +116,7 @@ const Register = () => {
       }
 
       // 5. Assign role
-      await supabase.from("user_roles").insert({
-        user_id: userId,
-        role: "intern",
-      });
+      await supabase.from("user_roles").insert({ user_id: userId, role: "intern" });
 
       // 6. Send confirmation email (fire-and-forget)
       supabase.functions.invoke("send-confirmation", {
@@ -201,8 +194,30 @@ const Register = () => {
                 </Select>
               </div>
               <div className="space-y-2">
+                <Label>Experience Level</Label>
+                <Select value={form.experience_level} onValueChange={(v) => updateField("experience_level", v)}>
+                  <SelectTrigger><SelectValue placeholder="Select your level" /></SelectTrigger>
+                  <SelectContent>
+                    {LEVELS.map((l) => (
+                      <SelectItem key={l.value} value={l.value}>{l.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="experience_desc">Tell us about your experience <span className="text-muted-foreground">(optional)</span></Label>
+                <Textarea
+                  id="experience_desc"
+                  placeholder="Share your background, projects you've worked on, or what you hope to learn..."
+                  value={form.experience_description}
+                  onChange={(e) => updateField("experience_description", e.target.value)}
+                  rows={3}
+                  maxLength={500}
+                />
+              </div>
+              <div className="space-y-2">
                 <Label htmlFor="github">GitHub Username <span className="text-muted-foreground">(optional)</span></Label>
-              <Input id="github" placeholder="johndoe" value={form.github_username} onChange={(e) => updateField("github_username", e.target.value.replace(/[^a-zA-Z0-9_-]/g, ""))} />
+                <Input id="github" placeholder="johndoe" value={form.github_username} onChange={(e) => updateField("github_username", e.target.value.replace(/[^a-zA-Z0-9_-]/g, ""))} />
               </div>
               <ResumeUploader onExtracted={(text) => updateField("resume_text", text)} />
               <Button type="submit" className="w-full" disabled={loading}>
