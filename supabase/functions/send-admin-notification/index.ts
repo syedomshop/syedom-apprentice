@@ -47,17 +47,17 @@ serve(async (req) => {
         });
         const data = await res.text();
         results.push({ email, success: res.ok, data });
-      } catch (e) {
-        results.push({ email, success: false, error: e.message });
+      } catch (e: unknown) {
+        results.push({ email, success: false, error: e instanceof Error ? e.message : "Unknown error" });
       }
     }
 
     return new Response(JSON.stringify({ success: true, results }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
-  } catch (e) {
+  } catch (e: unknown) {
     console.error("send-admin-notification error:", e);
-    return new Response(JSON.stringify({ error: e.message }), {
+    return new Response(JSON.stringify({ error: e instanceof Error ? e.message : "Unknown error" }), {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });

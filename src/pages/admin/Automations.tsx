@@ -1,11 +1,11 @@
 import { useState } from "react";
 import AdminLayout from "@/components/layout/AdminLayout";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { Bot, Mail, Clock, Brain, FileText, Bell } from "lucide-react";
+import { Bot, Mail, Clock, Brain, FileText, Bell, ShieldCheck } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 interface Automation {
@@ -13,7 +13,7 @@ interface Automation {
   label: string;
   description: string;
   icon: typeof Bot;
-  category: "ai" | "email" | "scheduling";
+  category: "ai" | "email" | "scheduling" | "enrollment";
   enabled: boolean;
 }
 
@@ -82,6 +82,14 @@ const defaultAutomations: Automation[] = [
     category: "scheduling",
     enabled: true,
   },
+  {
+    id: "auto_close_applications",
+    label: "Auto-Close Applications",
+    description: "Automatically close new applications when a batch becomes active. New applicants are added to the waitlist.",
+    icon: ShieldCheck,
+    category: "enrollment",
+    enabled: true,
+  },
 ];
 
 const AdminAutomations = () => {
@@ -108,6 +116,7 @@ const AdminAutomations = () => {
     { key: "ai" as const, label: "Core Operations", icon: Brain },
     { key: "email" as const, label: "Email Automations", icon: Mail },
     { key: "scheduling" as const, label: "Scheduled Jobs", icon: Clock },
+    { key: "enrollment" as const, label: "Enrollment Controls", icon: ShieldCheck },
   ];
 
   const enabledCount = automations.filter((a) => a.enabled).length;
@@ -124,6 +133,7 @@ const AdminAutomations = () => {
 
         {categories.map((cat) => {
           const items = automations.filter((a) => a.category === cat.key);
+          if (items.length === 0) return null;
           return (
             <Card key={cat.key}>
               <CardHeader>

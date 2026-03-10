@@ -1,6 +1,6 @@
 import { ReactNode, useEffect, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { LayoutDashboard, ListTodo, Upload, TrendingUp, Award, LogOut, Bell } from "lucide-react";
+import { LayoutDashboard, ListTodo, Upload, TrendingUp, Award, LogOut, Bell, Menu, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/lib/supabaseClient";
@@ -8,9 +8,9 @@ import { supabase } from "@/lib/supabaseClient";
 const navItems = [
   { label: "Dashboard", icon: LayoutDashboard, path: "/dashboard" },
   { label: "Tasks", icon: ListTodo, path: "/tasks" },
-  { label: "Submit Task", icon: Upload, path: "/submit" },
+  { label: "Submit", icon: Upload, path: "/submit" },
   { label: "Progress", icon: TrendingUp, path: "/progress" },
-  { label: "Notifications", icon: Bell, path: "/notifications" },
+  { label: "Alerts", icon: Bell, path: "/notifications" },
   { label: "Certificate", icon: Award, path: "/certificate" },
 ];
 
@@ -19,6 +19,7 @@ const PortalLayout = ({ children }: { children: ReactNode }) => {
   const navigate = useNavigate();
   const { signOut, internProfile } = useAuth();
   const [unreadCount, setUnreadCount] = useState(0);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   useEffect(() => {
     if (!internProfile) return;
@@ -29,8 +30,7 @@ const PortalLayout = ({ children }: { children: ReactNode }) => {
         .eq("intern_id", internProfile.id)
         .eq("is_read", false)
         .lte("scheduled_for", new Date().toISOString());
-      
-      // Also count client-side milestone notifications
+
       const start = internProfile.start_date ? new Date(internProfile.start_date) : null;
       let milestoneCount = 0;
       if (start) {
@@ -58,7 +58,8 @@ const PortalLayout = ({ children }: { children: ReactNode }) => {
 
   return (
     <div className="flex h-screen overflow-hidden">
-      <aside className="w-64 flex-shrink-0 bg-sidebar text-sidebar-foreground flex flex-col border-r border-sidebar-border">
+      {/* Desktop sidebar */}
+      <aside className="hidden md:flex w-64 flex-shrink-0 bg-sidebar text-sidebar-foreground flex-col border-r border-sidebar-border">
         <div className="h-16 flex items-center px-6 border-b border-sidebar-border">
           <img src="/images/syedom-labs-logo.png" alt="Syedom Labs" className="h-8 w-8 rounded-lg object-cover mr-2.5" />
           <div>
@@ -102,9 +103,50 @@ const PortalLayout = ({ children }: { children: ReactNode }) => {
           </button>
         </div>
       </aside>
+
+      {/* Mobile header */}
+      <div className="md:hidden fixed top-0 left-0 right-0 z-50 h-14 bg-card border-b border-border flex items-center justify-between px-4">
+        <div className="flex items-center gap-2">
+          <img src="/images/syedom-labs-logo.png" alt="Syedom Labs" className="h-7 w-7 rounded-lg object-cover" />
+          <span className="text-sm font-semibold text-foreground">Syedom Labs</span>
+        </div>
+        <button onClick={handleLogout} className="text-muted-foreground hover:text-foreground">
+          <LogOut className="h-5 w-5" />
+        </button>
+      </div>
+
+      {/* Main content */}
       <main className="flex-1 overflow-auto">
-        <div className="p-8">{children}</div>
+        <div className="p-4 md:p-8 pt-[72px] md:pt-8 pb-24 md:pb-8">{children}</div>
       </main>
+
+      {/* Mobile bottom nav */}
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-card border-t border-border flex items-center justify-around h-16 px-1">
+        {navItems.map((item) => {
+          const isActive = location.pathname === item.path;
+          const showBadge = item.path === "/notifications" && unreadCount > 0;
+          return (
+            <Link
+              key={item.path}
+              to={item.path}
+              className={cn(
+                "flex flex-col items-center justify-center gap-0.5 flex-1 py-2 rounded-md transition-colors relative",
+                isActive
+                  ? "text-primary"
+                  : "text-muted-foreground hover:text-foreground"
+              )}
+            >
+              <item.icon className="h-5 w-5" />
+              <span className="text-[10px] font-medium">{item.label}</span>
+              {showBadge && (
+                <span className="absolute top-1 right-1/4 h-4 min-w-4 px-0.5 rounded-full bg-destructive text-destructive-foreground text-[9px] font-bold flex items-center justify-center">
+                  {unreadCount > 9 ? "9+" : unreadCount}
+                </span>
+              )}
+            </Link>
+          );
+        })}
+      </nav>
     </div>
   );
 };
