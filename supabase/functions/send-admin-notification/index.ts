@@ -47,8 +47,8 @@ serve(async (req) => {
         });
         const data = await res.text();
         results.push({ email, success: res.ok, data });
-      } catch (e) {
-        results.push({ email, success: false, error: e.message });
+      } catch (e: unknown) {
+        results.push({ email, success: false, error: e instanceof Error ? e.message : "Unknown error" });
       }
     }
 
