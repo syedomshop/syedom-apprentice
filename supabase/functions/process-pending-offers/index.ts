@@ -84,7 +84,7 @@ serve(async (req) => {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${RESEND_API_KEY}` },
         body: JSON.stringify({
-          from: "Syedom Labs <noreply@syedomlabs.com>",
+          from: "Syedom Labs <onboarding@resend.dev>",
           to: offer.email,
           subject: `Offer Letter — ${offer.field} Intern at Syedom Labs`,
           html: offerHtml,
