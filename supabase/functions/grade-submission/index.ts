@@ -139,7 +139,7 @@ The instructor_comment must be ≤100 characters and sound natural. Examples: "S
             method: "POST",
             headers: { "Content-Type": "application/json", Authorization: `Bearer ${RESEND_API_KEY}` },
             body: JSON.stringify({
-              from: "Syedom Labs <noreply@syedomlabs.com>",
+              from: "Syedom Labs <onboarding@resend.dev>",
               to: profile.email,
               subject: "🎉 You're Eligible for Certification — Syedom Labs",
               html: `
