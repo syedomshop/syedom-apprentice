@@ -1,17 +1,1 @@
-[project]
-id = "tmsxfbrszqwsppmbkmmd"
-
-[functions.generate-tasks]
-verify_jwt = false
-
-[functions.grade-submission]
-verify_jwt = false
-
-[functions.send-confirmation]
-verify_jwt = false
-
-[functions.process-pending-offers]
-verify_jwt = false
-
-[functions.send-admin-notification]
-verify_jwt = false
+project_id = "tmsxfbrszqwsppmbkmmd"
