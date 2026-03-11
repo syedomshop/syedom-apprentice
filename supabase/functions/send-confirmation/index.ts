@@ -3,7 +3,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
 serve(async (req) => {
@@ -14,11 +14,13 @@ serve(async (req) => {
     const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
     if (!RESEND_API_KEY) throw new Error("RESEND_API_KEY not configured");
 
-    await fetch("https://api.resend.com/emails", {
+    console.log(`Sending confirmation to ${email} for ${name}`);
+
+    const emailRes = await fetch("https://api.resend.com/emails", {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${RESEND_API_KEY}` },
       body: JSON.stringify({
-        from: "Syedom Labs <noreply@syedomlabs.com>",
+        from: "Syedom Labs <onboarding@resend.dev>",
         to: email,
         subject: "Application Received — Syedom Labs Internship",
         html: `
@@ -35,6 +37,12 @@ serve(async (req) => {
         `,
       }),
     });
+
+    const emailBody = await emailRes.text();
+    console.log(`Resend response: ${emailRes.status} ${emailBody}`);
+    if (!emailRes.ok) {
+      console.error(`Resend error: ${emailBody}`);
+    }
 
     const delayMs = (Math.random() * 2 + 1) * 60 * 60 * 1000;
     const sendAfter = new Date(Date.now() + delayMs).toISOString();
@@ -59,8 +67,6 @@ serve(async (req) => {
         send_after: sendAfter,
       });
 
-      // Schedule milestone notifications
-      const startDate = new Date(Date.now() + 7 * 86400000); // 7 days from now
       const notifications = [
         {
           intern_id: profile.id,
@@ -83,7 +89,7 @@ serve(async (req) => {
           title: "📊 Midpoint Check-in",
           message: "You're halfway through! Review your progress and ensure all submissions are up to date.",
           type: "reminder",
-          scheduled_for: new Date(startDate.getTime() + 28 * 86400000).toISOString(),
+          scheduled_for: new Date(Date.now() + 35 * 86400000).toISOString(),
         },
         {
           intern_id: profile.id,
@@ -92,7 +98,7 @@ serve(async (req) => {
           type: "meeting",
           link: "https://meet.google.com/urh-hrej-jti",
           link_label: "Join Presentation Meeting",
-          scheduled_for: new Date(startDate.getTime() + 56 * 86400000).toISOString(),
+          scheduled_for: new Date(Date.now() + 63 * 86400000).toISOString(),
         },
       ];
 
