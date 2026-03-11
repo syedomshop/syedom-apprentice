@@ -75,9 +75,14 @@ The instructor_comment must be ≤100 characters and sound natural. Examples: "S
     });
 
     const data = await res.json();
+    if (!res.ok) {
+      console.error("Gemini API error:", JSON.stringify(data));
+      throw new Error(`Gemini API error: ${data.error?.message || res.statusText}`);
+    }
     const text = data.candidates?.[0]?.content?.parts?.[0]?.text || "";
+    console.log("Gemini raw response:", text.slice(0, 500));
     const jsonMatch = text.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) throw new Error("Failed to parse response");
+    if (!jsonMatch) throw new Error("Failed to parse Gemini response. Raw: " + text.slice(0, 200));
 
     const result = JSON.parse(jsonMatch[0]);
     let score = Math.min(100, Math.max(0, Math.round(result.score)));
