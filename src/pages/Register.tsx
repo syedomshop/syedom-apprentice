@@ -102,8 +102,6 @@ const Register = () => {
         github_username: form.github_username || null,
         batch_id: activeBatch || null,
         start_date: startDateStr,
-        experience_level: form.experience_level || null,
-        experience_description: form.experience_description || null,
       });
 
       if (profileError) {
