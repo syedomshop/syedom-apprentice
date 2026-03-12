@@ -13,6 +13,7 @@ import { supabase } from "@/lib/supabaseClient";
 import { RefreshCw, BookOpen } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import CreateTaskDialog from "@/components/admin/CreateTaskDialog";
+import ExcelTaskUpload from "@/components/admin/ExcelTaskUpload";
 
 interface Task {
   id: string;
