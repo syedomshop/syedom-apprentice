@@ -10,63 +10,41 @@ serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
-    const { repo_link, intern_comment, task_id, intern_id } = await req.json();
+    const { submission_text, task_id, intern_id } = await req.json();
     const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
     if (!GEMINI_API_KEY) throw new Error("GEMINI_API_KEY not configured");
 
     const supabase = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
 
-    // Validate GitHub repo
-    let repoValid = true;
-    let repoInfo = "";
-    if (repo_link) {
-      const repoMatch = repo_link.match(/github\.com\/([^\/]+\/[^\/]+)/);
-      if (repoMatch) {
-        try {
-          const ghRes = await fetch(`https://api.github.com/repos/${repoMatch[1].replace(/\.git$/, "")}`, {
-            headers: { "User-Agent": "SyedomLabs-Grader" },
-          });
-          if (!ghRes.ok) {
-            repoValid = false;
-            repoInfo = "Repository not found or private.";
-          }
-        } catch {
-          repoInfo = "Could not verify repository.";
-        }
-      }
-    }
-
     const { data: task } = await supabase.from("tasks").select("title, description, learning_objective, deliverable").eq("id", task_id).single();
 
-    const prompt = `You are a senior software engineering instructor reviewing a student's project submission. Respond as a human instructor would — professional, constructive, and encouraging.
+    const prompt = `You are a senior instructor evaluating a student's written assignment submission for an internship program.
 
 Task: ${task?.title || "Unknown"}
 Description: ${task?.description || ""}
 Learning Objective: ${task?.learning_objective || ""}
-Expected Deliverable: ${task?.deliverable || ""}
-GitHub: ${repo_link || "Not provided"}${!repoValid ? " (WARNING: Repository not accessible)" : ""}
-Student Comment: ${intern_comment || "None"}
+Expected Output: ${task?.deliverable || ""}
 
-Evaluate based on:
-1. Code structure and organization
-2. Documentation quality
-3. Functionality and completeness
-4. Difficulty and effort level
-5. Best practices followed
+Student's Submission:
+---
+${submission_text || "No submission text provided"}
+---
 
-Check if the project appears copied from common tutorials or shows no original work.
+Evaluate the submission based on:
+1. Relevance to the task description
+2. Completeness and depth of response
+3. Technical accuracy
+4. Clarity and organization
+5. Effort and original thinking
 
-Return ONLY JSON:
+Return ONLY valid JSON (no markdown fences):
 {
-  "score": number (0-100),
-  "instructor_comment": "brief feedback as instructor, max 100 characters",
-  "feedback": "detailed evaluation paragraph",
-  "strengths": "what was done well",
-  "improvements": "specific suggestions",
-  "plagiarism_flag": boolean
-}
-
-The instructor_comment must be ≤100 characters and sound natural. Examples: "Solid work, clean structure. Add more tests.", "Good effort but needs better error handling."`;
+  "score": <number 0-100>,
+  "instructor_comment": "<brief feedback, max 100 characters>",
+  "feedback": "<detailed evaluation paragraph>",
+  "strengths": "<what was done well>",
+  "improvements": "<specific suggestions for improvement>"
+}`;
 
     const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`, {
       method: "POST",
@@ -79,19 +57,17 @@ The instructor_comment must be ≤100 characters and sound natural. Examples: "S
       console.error("Gemini API error:", JSON.stringify(data));
       throw new Error(`Gemini API error: ${data.error?.message || res.statusText}`);
     }
+
     const text = data.candidates?.[0]?.content?.parts?.[0]?.text || "";
     console.log("Gemini raw response:", text.slice(0, 500));
+
     const jsonMatch = text.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) throw new Error("Failed to parse Gemini response. Raw: " + text.slice(0, 200));
+    if (!jsonMatch) throw new Error("Failed to parse AI response: " + text.slice(0, 200));
 
     const result = JSON.parse(jsonMatch[0]);
-    let score = Math.min(100, Math.max(0, Math.round(result.score)));
-
-    if (!repoValid && repo_link) score = Math.min(score, 40);
-    if (result.plagiarism_flag) score = Math.max(0, score - 25);
-
+    const score = Math.min(100, Math.max(0, Math.round(result.score)));
     const instructorComment = (result.instructor_comment || "Good submission.").slice(0, 100);
-    const feedback = `${result.feedback}\n\n**Strengths:** ${result.strengths || "N/A"}\n\n**Improvements:** ${result.improvements || "N/A"}${result.plagiarism_flag ? "\n\n⚠️ Originality concerns detected — score adjusted." : ""}${!repoValid && repo_link ? "\n\n⚠️ GitHub repository could not be verified." : ""}`;
+    const feedback = `${result.feedback}\n\n**Strengths:** ${result.strengths || "N/A"}\n\n**Improvements:** ${result.improvements || "N/A"}`;
 
     await supabase.from("submissions").update({
       ai_score: score,
@@ -100,12 +76,12 @@ The instructor_comment must be ≤100 characters and sound natural. Examples: "S
       status: "graded",
     }).eq("intern_id", intern_id).eq("task_id", task_id).order("created_at", { ascending: false }).limit(1);
 
-    // Track usage
+    // Track AI usage
     const today = new Date().toISOString().split("T")[0];
     const { data: usage } = await supabase.from("ai_usage").select("*").eq("date", today).maybeSingle();
     await supabase.from("ai_usage").upsert({ date: today, tokens_used: (usage?.tokens_used || 0) + text.length * 2, api_calls: (usage?.api_calls || 0) + 1 }, { onConflict: "date" });
 
-    // Check completion — issue certificate or send rejection
+    // Check completion — issue certificate if all tasks done
     const { data: allSubs } = await supabase.from("submissions").select("ai_score").eq("intern_id", intern_id).not("ai_score", "is", null);
     const { count: total } = await supabase.from("intern_tasks").select("*", { count: "exact", head: true }).eq("intern_id", intern_id);
     const { count: done } = await supabase.from("intern_tasks").select("*", { count: "exact", head: true }).eq("intern_id", intern_id).eq("status", "completed");
@@ -139,26 +115,18 @@ The instructor_comment must be ≤100 characters and sound natural. Examples: "S
             method: "POST",
             headers: { "Content-Type": "application/json", Authorization: `Bearer ${RESEND_API_KEY}` },
             body: JSON.stringify({
-              from: "Syedom Labs <onboarding@resend.dev>",
+              from: "Syedom Labs <noreply@syedom.com>",
               to: profile.email,
               subject: "🎉 You're Eligible for Certification — Syedom Labs",
-              html: `
-                <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-                  <h1 style="color: #1a365d;">Syedom Labs</h1>
-                  <h2 style="color: #2563eb;">Congratulations, ${profile.name}! 🎉</h2>
-                  <p>You have completed the <strong>${profile.field}</strong> internship with an average score of <strong>${avg}/100</strong>.</p>
-                  <p><strong>Certificate Code:</strong> ${certCode}</p>
-                  <p>To download your certificate, complete the PKR 50 payment from your dashboard.</p>
-                  <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 20px 0;">
-                  <h3 style="color: #1a365d;">📢 Share Your Achievement!</h3>
-                  <ul>
-                    <li>🔗 Add this internship to your <strong>LinkedIn Experience</strong></li>
-                    <li>👥 Follow <strong>Syedom Labs</strong> on LinkedIn</li>
-                    <li>📜 Share your certificate with your network</li>
-                  </ul>
-                  <p style="color: #718096; font-size: 12px;">© Syedom Labs. All rights reserved.</p>
-                </div>
-              `,
+              html: `<div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:20px;">
+                <h1 style="color:#1a365d;">Syedom Labs</h1>
+                <h2 style="color:#2563eb;">Congratulations, ${profile.name}! 🎉</h2>
+                <p>You have completed the <strong>${profile.field}</strong> internship with an average score of <strong>${avg}/100</strong>.</p>
+                <p><strong>Certificate Code:</strong> ${certCode}</p>
+                <p>To download your certificate, complete the PKR 50 payment from your dashboard.</p>
+                <hr style="border:none;border-top:1px solid #e2e8f0;margin:20px 0;">
+                <p style="color:#718096;font-size:12px;">© Syedom Labs. All rights reserved.</p>
+              </div>`,
             }),
           });
         }
@@ -168,20 +136,17 @@ The instructor_comment must be ≤100 characters and sound natural. Examples: "S
             method: "POST",
             headers: { "Content-Type": "application/json", Authorization: `Bearer ${RESEND_API_KEY}` },
             body: JSON.stringify({
-              from: "Syedom Labs <onboarding@resend.dev>",
+              from: "Syedom Labs <noreply@syedom.com>",
               to: profile.email,
               subject: "Internship Completion — Certificate Status",
-              html: `
-                <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-                  <h1 style="color: #1a365d;">Syedom Labs</h1>
-                  <p>Dear ${profile.name},</p>
-                  <p>Your average score of <strong>${avg}/100</strong> does not meet the 50/100 minimum for certification.</p>
-                  <p>You are not eligible for a certificate in this batch. You may reapply in the <strong>next batch</strong>.</p>
-                  <p>We encourage you to review the feedback on each submission and improve your skills.</p>
-                  <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 20px 0;">
-                  <p style="color: #718096; font-size: 12px;">© Syedom Labs. All rights reserved.</p>
-                </div>
-              `,
+              html: `<div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:20px;">
+                <h1 style="color:#1a365d;">Syedom Labs</h1>
+                <p>Dear ${profile.name},</p>
+                <p>Your average score of <strong>${avg}/100</strong> does not meet the 50/100 minimum for certification.</p>
+                <p>You may reapply in the <strong>next batch</strong>.</p>
+                <hr style="border:none;border-top:1px solid #e2e8f0;margin:20px 0;">
+                <p style="color:#718096;font-size:12px;">© Syedom Labs. All rights reserved.</p>
+              </div>`,
             }),
           });
         }
@@ -190,6 +155,7 @@ The instructor_comment must be ≤100 characters and sound natural. Examples: "S
 
     return new Response(JSON.stringify({ success: true, score }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
   } catch (e: unknown) {
+    console.error("grade-submission error:", e);
     return new Response(JSON.stringify({ error: e instanceof Error ? e.message : "Unknown error" }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
   }
 });

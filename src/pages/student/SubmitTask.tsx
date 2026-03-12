@@ -1,11 +1,11 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import PortalLayout from "@/components/layout/PortalLayout";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Upload, CheckCircle, AlertTriangle } from "lucide-react";
+import { Upload } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/lib/supabaseClient";
 import { useAuth } from "@/contexts/AuthContext";
@@ -16,10 +16,8 @@ import { TTL } from "@/lib/cache";
 const SubmitTask = () => {
   const { internProfile } = useAuth();
   const [taskId, setTaskId] = useState("");
-  const [repoLink, setRepoLink] = useState("");
-  const [internComment, setInternComment] = useState("");
+  const [submissionText, setSubmissionText] = useState("");
   const [loading, setLoading] = useState(false);
-  const [repoStatus, setRepoStatus] = useState<"idle" | "checking" | "valid" | "invalid">("idle");
   const { toast } = useToast();
   const profileId = internProfile?.id;
 
@@ -36,26 +34,16 @@ const SubmitTask = () => {
     { ttl: TTL.SHORT, enabled: !!profileId }
   );
 
-  const validateRepo = async (url: string) => {
-    if (!url) { setRepoStatus("idle"); return; }
-    const match = url.match(/github\.com\/([^\/]+\/[^\/]+)/);
-    if (!match) { setRepoStatus("invalid"); return; }
-    setRepoStatus("checking");
-    try {
-      const res = await fetch(`https://api.github.com/repos/${match[1].replace(/\.git$/, "")}`);
-      setRepoStatus(res.ok ? "valid" : "invalid");
-    } catch { setRepoStatus("invalid"); }
-  };
-
-  useEffect(() => {
-    const timer = setTimeout(() => validateRepo(repoLink), 800);
-    return () => clearTimeout(timer);
-  }, [repoLink]);
+  const selectedTask = tasks?.find((t) => t.task_id === taskId);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!internProfile || !repoLink) {
-      toast({ title: "GitHub repo required", description: "Please provide your GitHub repository link.", variant: "destructive" });
+    if (!internProfile || !submissionText.trim()) {
+      toast({ title: "Submission text required", description: "Please write your assignment response.", variant: "destructive" });
+      return;
+    }
+    if (!taskId) {
+      toast({ title: "Select a task", description: "Please choose which task you're submitting.", variant: "destructive" });
       return;
     }
     setLoading(true);
@@ -64,30 +52,33 @@ const SubmitTask = () => {
       const { error } = await supabase.from("submissions").insert({
         intern_id: internProfile.id,
         task_id: taskId,
-        repo_link: repoLink,
-        intern_comment: internComment || null,
+        repo_link: submissionText.trim(),
+        intern_comment: null,
       });
       if (error) throw error;
 
       await supabase.from("intern_tasks").update({ status: "completed" }).eq("intern_id", internProfile.id).eq("task_id", taskId);
 
+      // Trigger AI grading with text submission
       supabase.functions.invoke("grade-submission", {
-        body: { repo_link: repoLink, intern_comment: internComment, task_id: taskId, intern_id: internProfile.id },
+        body: {
+          submission_text: submissionText.trim(),
+          task_id: taskId,
+          intern_id: internProfile.id,
+        },
       }).catch(() => {});
 
-      // Invalidate all related caches so next visit fetches fresh data
+      // Invalidate caches
       invalidateCache(`dashboard_${profileId}`);
       invalidateCache(`tasks_${profileId}`);
       invalidateCache(`progress_${profileId}`);
       invalidateCache(`certificate_${profileId}`);
       invalidateCache(`submit_tasks_${profileId}`);
 
-      toast({ title: "Task submitted!", description: "Your work will be evaluated shortly. Check your progress page for results." });
+      toast({ title: "Task submitted!", description: "Your work will be evaluated by AI shortly. Check your progress page for results." });
 
       setTaskId("");
-      setRepoLink("");
-      setInternComment("");
-      setRepoStatus("idle");
+      setSubmissionText("");
       refetch();
     } catch (err: any) {
       toast({ title: "Submission failed", description: err.message, variant: "destructive" });
@@ -101,7 +92,7 @@ const SubmitTask = () => {
       <div className="max-w-2xl space-y-6">
         <div>
           <h1 className="text-2xl font-semibold text-foreground">Submit Task</h1>
-          <p className="text-sm text-muted-foreground mt-1">Submit your GitHub repository for evaluation</p>
+          <p className="text-sm text-muted-foreground mt-1">Write and submit your assignment response for AI evaluation</p>
         </div>
 
         <Card>
@@ -120,22 +111,36 @@ const SubmitTask = () => {
                   </SelectContent>
                 </Select>
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="repo">GitHub Repository Link <span className="text-destructive">*</span></Label>
-                <div className="relative">
-                  <Input id="repo" type="url" placeholder="https://github.com/username/repo" value={repoLink} onChange={(e) => setRepoLink(e.target.value)} required />
-                  {repoStatus === "valid" && <CheckCircle className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-success" />}
-                  {repoStatus === "invalid" && <AlertTriangle className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-destructive" />}
+
+              {selectedTask && (
+                <div className="rounded-lg border border-border bg-muted/30 p-4 space-y-2">
+                  <h3 className="text-sm font-medium text-foreground">{selectedTask.tasks?.title}</h3>
+                  <p className="text-xs text-muted-foreground">{selectedTask.tasks?.description}</p>
+                  {selectedTask.tasks?.deliverable && (
+                    <p className="text-xs text-muted-foreground">
+                      <strong>Expected Output:</strong> {selectedTask.tasks.deliverable}
+                    </p>
+                  )}
                 </div>
-                {repoStatus === "invalid" && <p className="text-xs text-destructive">Repository not found or not accessible. Please check the URL.</p>}
-                {repoStatus === "checking" && <p className="text-xs text-muted-foreground">Verifying repository...</p>}
-              </div>
+              )}
+
               <div className="space-y-2">
-                <Label htmlFor="comment">Comment <span className="text-muted-foreground">(optional, max 100 chars)</span></Label>
-                <Input id="comment" placeholder="Brief note about your approach..." value={internComment} onChange={(e) => setInternComment(e.target.value.slice(0, 100))} maxLength={100} />
-                <p className="text-xs text-muted-foreground text-right">{internComment.length}/100</p>
+                <Label htmlFor="submission">
+                  Your Submission <span className="text-destructive">*</span>
+                </Label>
+                <Textarea
+                  id="submission"
+                  placeholder="Write your assignment response here. Be thorough and detailed..."
+                  value={submissionText}
+                  onChange={(e) => setSubmissionText(e.target.value)}
+                  rows={10}
+                  required
+                  className="min-h-[200px]"
+                />
+                <p className="text-xs text-muted-foreground text-right">{submissionText.length} characters</p>
               </div>
-              <Button type="submit" disabled={loading || !tasks?.length || !repoLink} className="w-full">
+
+              <Button type="submit" disabled={loading || !tasks?.length || !submissionText.trim() || !taskId} className="w-full">
                 <Upload className="h-4 w-4 mr-2" /> {loading ? "Submitting..." : "Submit Task"}
               </Button>
             </form>
