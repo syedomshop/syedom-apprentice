@@ -20,89 +20,57 @@ serve(async (req) => {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${RESEND_API_KEY}` },
       body: JSON.stringify({
-        from: "Syedom Labs <onboarding@resend.dev>",
+        from: "Syedom Labs <noreply@syedom.com>",
         to: email,
         subject: "Application Received — Syedom Labs Internship",
-        html: `
-          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-            <h1 style="color: #1a365d;">Syedom Labs</h1>
-            <h2>Application Received</h2>
-            <p>Dear ${name},</p>
-            <p>Thank you for applying to the <strong>${field}</strong> internship at Syedom Labs.</p>
-            <p>Your application is under review by our team. You will receive your official offer letter within the next few hours.</p>
-            <p><strong>Intern ID:</strong> ${intern_id}</p>
-            <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 20px 0;">
-            <p style="color: #718096; font-size: 12px;">© Syedom Labs. All rights reserved.</p>
-          </div>
-        `,
+        html: `<div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:20px;">
+          <h1 style="color:#1a365d;">Syedom Labs</h1>
+          <h2>Application Received</h2>
+          <p>Dear ${name},</p>
+          <p>Thank you for applying to the <strong>${field}</strong> internship at Syedom Labs.</p>
+          <p>Your application is under review. You will receive your official offer letter shortly.</p>
+          <p><strong>Intern ID:</strong> ${intern_id}</p>
+          <hr style="border:none;border-top:1px solid #e2e8f0;margin:20px 0;">
+          <p style="color:#718096;font-size:12px;">© Syedom Labs. All rights reserved.</p>
+        </div>`,
       }),
     });
 
     const emailBody = await emailRes.text();
     console.log(`Resend response: ${emailRes.status} ${emailBody}`);
-    if (!emailRes.ok) {
-      console.error(`Resend error: ${emailBody}`);
-    }
 
     const delayMs = (Math.random() * 2 + 1) * 60 * 60 * 1000;
     const sendAfter = new Date(Date.now() + delayMs).toISOString();
 
-    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const supabase = createClient(supabaseUrl, supabaseKey);
+    const supabase = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
 
-    const { data: profile } = await supabase
-      .from("intern_profiles")
-      .select("id")
-      .eq("intern_id", intern_id)
-      .single();
+    const { data: profile } = await supabase.from("intern_profiles").select("id").eq("intern_id", intern_id).single();
 
     if (profile) {
       await supabase.from("pending_offers").insert({
         intern_profile_id: profile.id,
-        name,
-        email,
-        field,
-        intern_id,
+        name, email, field, intern_id,
         send_after: sendAfter,
       });
 
-      const notifications = [
+      await supabase.from("notifications").insert([
         {
           intern_id: profile.id,
           title: "📋 Prepare for Your Internship",
-          message: "Your internship starts in a few days! Make sure your GitHub account is set up and you're ready to begin.",
+          message: "Your internship starts soon! Make sure you're ready to begin.",
           type: "reminder",
           scheduled_for: new Date(Date.now() + 5 * 86400000).toISOString(),
         },
         {
           intern_id: profile.id,
           title: "🎓 Orientation Session",
-          message: "Join our live orientation session to meet the team and get started with your internship journey.",
+          message: "Join our live orientation session to meet the team.",
           type: "meeting",
           link: "https://meet.google.com/zyr-jwmt-yyb",
           link_label: "Join Orientation Meeting",
           scheduled_for: new Date(Date.now() + 7 * 86400000).toISOString(),
         },
-        {
-          intern_id: profile.id,
-          title: "📊 Midpoint Check-in",
-          message: "You're halfway through! Review your progress and ensure all submissions are up to date.",
-          type: "reminder",
-          scheduled_for: new Date(Date.now() + 35 * 86400000).toISOString(),
-        },
-        {
-          intern_id: profile.id,
-          title: "🎤 Final Project Presentation",
-          message: "It's time to showcase your work! Join the final presentation session to present your project.",
-          type: "meeting",
-          link: "https://meet.google.com/urh-hrej-jti",
-          link_label: "Join Presentation Meeting",
-          scheduled_for: new Date(Date.now() + 63 * 86400000).toISOString(),
-        },
-      ];
-
-      await supabase.from("notifications").insert(notifications);
+      ]);
     }
 
     return new Response(JSON.stringify({ success: true }), {
@@ -111,8 +79,7 @@ serve(async (req) => {
   } catch (e: unknown) {
     console.error("send-confirmation error:", e);
     return new Response(JSON.stringify({ error: e instanceof Error ? e.message : "Unknown error" }), {
-      status: 500,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
+      status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
 });
