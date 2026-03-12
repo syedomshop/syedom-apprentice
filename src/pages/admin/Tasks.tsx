@@ -124,6 +124,8 @@ const AdminTasks = () => {
           </Select>
         </div>
 
+        <ExcelTaskUpload batches={batches} onUploaded={fetchData} />
+
         <Card>
           <CardContent className="p-0">
             {loading ? (

@@ -51,7 +51,7 @@ const StudentTasks = () => {
       <div className="space-y-6">
         <div>
           <h1 className="text-2xl font-semibold text-foreground">Weekly Tasks</h1>
-          <p className="text-sm text-muted-foreground mt-1">Complete your assigned tasks each week — submit GitHub repos only</p>
+          <p className="text-sm text-muted-foreground mt-1">Complete your assigned tasks each week — submit your written response</p>
         </div>
 
         {loading ? (

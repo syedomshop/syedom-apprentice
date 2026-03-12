@@ -1,6 +1,7 @@
 import { useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -25,7 +26,7 @@ interface Props {
   onUploaded: () => void;
 }
 
-const COLUMN_MAP: Record<string, keyof ParsedTask> = {
+const COLUMN_MAP: Record<string, string> = {
   role: "role",
   field: "role",
   week: "week",
@@ -37,7 +38,7 @@ const COLUMN_MAP: Record<string, keyof ParsedTask> = {
   description: "description",
   "task description": "description",
   "expected output": "expected_output",
-  "expected_output": "expected_output",
+  expected_output: "expected_output",
   deliverable: "expected_output",
 };
 
@@ -62,21 +63,17 @@ const ExcelTaskUpload = ({ batches, onUploaded }: Props) => {
         const raw: Record<string, any>[] = XLSX.utils.sheet_to_json(ws, { defval: "" });
 
         if (raw.length === 0) {
-          toast({ title: "Empty file", description: "No rows found in the Excel file.", variant: "destructive" });
+          toast({ title: "Empty file", description: "No rows found.", variant: "destructive" });
           return;
         }
 
-        // Map columns flexibly
-        const headerKeys = Object.keys(raw[0]).map((k) => k.toLowerCase().trim());
         const colMapping: Record<string, string> = {};
         Object.keys(raw[0]).forEach((originalKey) => {
           const lower = originalKey.toLowerCase().trim();
-          if (COLUMN_MAP[lower]) {
-            colMapping[originalKey] = COLUMN_MAP[lower];
-          }
+          if (COLUMN_MAP[lower]) colMapping[originalKey] = COLUMN_MAP[lower];
         });
 
-        const tasks: ParsedTask[] = raw.map((row, idx) => {
+        const tasks: ParsedTask[] = raw.map((row) => {
           const mapped: any = {};
           Object.entries(colMapping).forEach(([orig, target]) => {
             mapped[target] = String(row[orig] || "").trim();
@@ -101,10 +98,7 @@ const ExcelTaskUpload = ({ batches, onUploaded }: Props) => {
 
         setParsedTasks(tasks);
         const validCount = tasks.filter((t) => t.valid).length;
-        toast({
-          title: `Parsed ${tasks.length} rows`,
-          description: `${validCount} valid, ${tasks.length - validCount} invalid`,
-        });
+        toast({ title: `Parsed ${tasks.length} rows`, description: `${validCount} valid, ${tasks.length - validCount} invalid` });
       } catch (err: any) {
         toast({ title: "Parse error", description: err.message, variant: "destructive" });
       }
@@ -115,11 +109,11 @@ const ExcelTaskUpload = ({ batches, onUploaded }: Props) => {
   const handleUpload = async () => {
     const valid = parsedTasks.filter((t) => t.valid);
     if (valid.length === 0) {
-      toast({ title: "No valid tasks", description: "Fix errors before uploading.", variant: "destructive" });
+      toast({ title: "No valid tasks", variant: "destructive" });
       return;
     }
     if (!batchId) {
-      toast({ title: "Select a batch", description: "Choose a batch to assign tasks to.", variant: "destructive" });
+      toast({ title: "Select a batch", variant: "destructive" });
       return;
     }
 
@@ -138,7 +132,7 @@ const ExcelTaskUpload = ({ batches, onUploaded }: Props) => {
       const { error } = await supabase.from("tasks").insert(rows);
       if (error) throw error;
 
-      toast({ title: "Tasks uploaded!", description: `${rows.length} tasks inserted successfully.` });
+      toast({ title: "Tasks uploaded!", description: `${rows.length} tasks inserted.` });
       setParsedTasks([]);
       setFileName("");
       if (fileRef.current) fileRef.current.value = "";
@@ -163,26 +157,18 @@ const ExcelTaskUpload = ({ batches, onUploaded }: Props) => {
       </CardHeader>
       <CardContent className="space-y-4">
         <p className="text-xs text-muted-foreground">
-          Upload an Excel file with columns: <strong>Role</strong>, <strong>Week</strong>, <strong>Task Title</strong>, <strong>Task Description</strong>, <strong>Expected Output</strong>
+          Columns: <strong>Role</strong>, <strong>Week</strong>, <strong>Task Title</strong>, <strong>Task Description</strong>, <strong>Expected Output</strong>
         </p>
 
         <div className="flex flex-wrap gap-3 items-end">
           <div className="space-y-2">
             <Label>Excel File</Label>
-            <Input
-              ref={fileRef as any}
-              type="file"
-              accept=".xlsx,.xls,.csv"
-              onChange={handleFile}
-              className="max-w-xs"
-            />
+            <Input ref={fileRef} type="file" accept=".xlsx,.xls,.csv" onChange={handleFile} className="max-w-xs" />
           </div>
           <div className="space-y-2">
             <Label>Target Batch</Label>
             <Select value={batchId} onValueChange={setBatchId}>
-              <SelectTrigger className="w-48">
-                <SelectValue placeholder="Select batch" />
-              </SelectTrigger>
+              <SelectTrigger className="w-48"><SelectValue placeholder="Select batch" /></SelectTrigger>
               <SelectContent>
                 {batches.map((b) => (
                   <SelectItem key={b.id} value={b.id}>Batch {b.batch_number}</SelectItem>
@@ -248,8 +234,5 @@ const ExcelTaskUpload = ({ batches, onUploaded }: Props) => {
     </Card>
   );
 };
-
-// Need Input imported
-import { Input } from "@/components/ui/input";
 
 export default ExcelTaskUpload;
