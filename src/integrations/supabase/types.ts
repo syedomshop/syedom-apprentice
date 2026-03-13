@@ -121,6 +121,48 @@ export type Database = {
           },
         ]
       }
+      grades: {
+        Row: {
+          feedback: string | null
+          graded_at: string | null
+          id: string
+          intern_id: string
+          score: number
+          task_id: string
+        }
+        Insert: {
+          feedback?: string | null
+          graded_at?: string | null
+          id?: string
+          intern_id: string
+          score?: number
+          task_id: string
+        }
+        Update: {
+          feedback?: string | null
+          graded_at?: string | null
+          id?: string
+          intern_id?: string
+          score?: number
+          task_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "grades_intern_id_fkey"
+            columns: ["intern_id"]
+            isOneToOne: false
+            referencedRelation: "intern_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "grades_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       intern_profiles: {
         Row: {
           batch_id: string | null
@@ -316,6 +358,7 @@ export type Database = {
           repo_link: string
           status: Database["public"]["Enums"]["submission_status"] | null
           task_id: string
+          timeliness: string | null
         }
         Insert: {
           ai_feedback?: string | null
@@ -328,6 +371,7 @@ export type Database = {
           repo_link: string
           status?: Database["public"]["Enums"]["submission_status"] | null
           task_id: string
+          timeliness?: string | null
         }
         Update: {
           ai_feedback?: string | null
@@ -340,6 +384,7 @@ export type Database = {
           repo_link?: string
           status?: Database["public"]["Enums"]["submission_status"] | null
           task_id?: string
+          timeliness?: string | null
         }
         Relationships: [
           {
@@ -362,6 +407,7 @@ export type Database = {
         Row: {
           batch_id: string | null
           created_at: string | null
+          deadline: string | null
           deliverable: string | null
           description: string | null
           difficulty: string | null
@@ -370,6 +416,7 @@ export type Database = {
           id: string
           learning_objective: string | null
           mentor_explanation: string | null
+          task_file_url: string | null
           title: string
           week_number: number
           youtube_links: string[] | null
@@ -377,6 +424,7 @@ export type Database = {
         Insert: {
           batch_id?: string | null
           created_at?: string | null
+          deadline?: string | null
           deliverable?: string | null
           description?: string | null
           difficulty?: string | null
@@ -385,6 +433,7 @@ export type Database = {
           id?: string
           learning_objective?: string | null
           mentor_explanation?: string | null
+          task_file_url?: string | null
           title: string
           week_number: number
           youtube_links?: string[] | null
@@ -392,6 +441,7 @@ export type Database = {
         Update: {
           batch_id?: string | null
           created_at?: string | null
+          deadline?: string | null
           deliverable?: string | null
           description?: string | null
           difficulty?: string | null
@@ -400,6 +450,7 @@ export type Database = {
           id?: string
           learning_objective?: string | null
           mentor_explanation?: string | null
+          task_file_url?: string | null
           title?: string
           week_number?: number
           youtube_links?: string[] | null
