@@ -33,38 +33,78 @@ const AdminTasks = () => {
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
 
+  const generateDeadline = (week: number) => {
+    const today = new Date();
+    const deadline = new Date(today);
+    deadline.setDate(today.getDate() + week * 7);
+    return deadline.toLocaleDateString();
+  };
+
   const fetchData = async () => {
     setLoading(true);
+
     try {
       const [{ data: batchData }, { data: taskData }] = await Promise.all([
-        supabase.from("batches").select("id, batch_number, title").order("batch_number", { ascending: false }),
-        supabase.from("tasks").select("*").order("week_number"),
+        supabase
+          .from("batches")
+          .select("id, batch_number, title")
+          .order("batch_number", { ascending: false }),
+
+        supabase
+          .from("tasks")
+          .select("*")
+          .order("week_number", { ascending: true })
+          .order("field", { ascending: true }),
       ]);
+
       setBatches(batchData || []);
       setTasks(taskData || []);
     } catch (err) {
       console.error(err);
-      toast({ title: "Error", description: "Failed to load tasks", variant: "destructive" });
+      toast({
+        title: "Error",
+        description: "Failed to load tasks",
+        variant: "destructive",
+      });
     } finally {
       setLoading(false);
     }
   };
 
-  useEffect(() => { fetchData(); }, []);
+  useEffect(() => {
+    fetchData();
+  }, []);
 
   const fields = [...new Set(tasks.map((t) => t.field))];
-  const filtered = selectedField === "all" ? tasks : tasks.filter((t) => t.field === selectedField);
+  const filtered =
+    selectedField === "all"
+      ? tasks
+      : tasks.filter((t) => t.field === selectedField);
 
   return (
     <AdminLayout>
       <div className="space-y-6">
+
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-foreground">Task Management</h1>
-            <p className="text-muted-foreground text-sm mt-1">{tasks.length} total tasks</p>
+            <h1 className="text-2xl font-bold text-foreground">
+              Task Management
+            </h1>
+            <p className="text-muted-foreground text-sm mt-1">
+              {tasks.length} total tasks
+            </p>
           </div>
-          <Button variant="outline" size="sm" onClick={fetchData} disabled={loading}>
-            <RefreshCw className={`h-4 w-4 mr-2 ${loading ? "animate-spin" : ""}`} /> Refresh
+
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={fetchData}
+            disabled={loading}
+          >
+            <RefreshCw
+              className={`h-4 w-4 mr-2 ${loading ? "animate-spin" : ""}`}
+            />
+            Refresh
           </Button>
         </div>
 
@@ -74,22 +114,28 @@ const AdminTasks = () => {
           <SelectTrigger className="w-48">
             <SelectValue placeholder="Filter by role" />
           </SelectTrigger>
+
           <SelectContent>
             <SelectItem value="all">All Roles</SelectItem>
+
             {fields.map((f) => (
-              <SelectItem key={f} value={f}>{f}</SelectItem>
+              <SelectItem key={f} value={f}>
+                {f}
+              </SelectItem>
             ))}
           </SelectContent>
         </Select>
 
         <Card>
           <CardContent className="p-0">
+
             {loading ? (
               <div className="flex items-center justify-center h-32">
                 <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary" />
               </div>
             ) : (
               <div className="overflow-x-auto">
+
                 <Table>
                   <TableHeader>
                     <TableRow>
@@ -100,36 +146,62 @@ const AdminTasks = () => {
                       <TableHead>Task File</TableHead>
                     </TableRow>
                   </TableHeader>
+
                   <TableBody>
                     {filtered.length === 0 ? (
                       <TableRow>
-                        <TableCell colSpan={5} className="text-center text-muted-foreground py-8">No tasks found</TableCell>
+                        <TableCell
+                          colSpan={5}
+                          className="text-center text-muted-foreground py-8"
+                        >
+                          No tasks found
+                        </TableCell>
                       </TableRow>
                     ) : (
                       filtered.map((task) => (
                         <TableRow key={task.id}>
-                          <TableCell><Badge variant="outline">W{task.week_number}</Badge></TableCell>
-                          <TableCell className="font-medium text-foreground">{task.title}</TableCell>
-                          <TableCell>{task.field}</TableCell>
-                          <TableCell className="text-xs text-muted-foreground">
-                            {task.deadline ? new Date(task.deadline).toLocaleDateString() : "—"}
+                          <TableCell>
+                            <Badge variant="outline">
+                              W{task.week_number}
+                            </Badge>
                           </TableCell>
+
+                          <TableCell className="font-medium text-foreground">
+                            {task.title}
+                          </TableCell>
+
+                          <TableCell>{task.field}</TableCell>
+
+                          <TableCell className="text-xs text-muted-foreground">
+                            {generateDeadline(task.week_number)}
+                          </TableCell>
+
                           <TableCell>
                             {task.task_file_url ? (
-                              <a href={task.task_file_url} target="_blank" rel="noopener noreferrer" className="text-xs text-primary hover:underline">
+                              <a
+                                href={task.task_file_url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-xs text-primary hover:underline"
+                              >
                                 View
                               </a>
-                            ) : "—"}
+                            ) : (
+                              "—"
+                            )}
                           </TableCell>
                         </TableRow>
                       ))
                     )}
                   </TableBody>
+
                 </Table>
+
               </div>
             )}
           </CardContent>
         </Card>
+
       </div>
     </AdminLayout>
   );
