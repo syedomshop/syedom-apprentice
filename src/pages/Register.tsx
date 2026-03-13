@@ -126,7 +126,7 @@ const Register = () => {
         description: `Your Intern ID is ${internId}. Check your email — your offer letter will arrive shortly.`,
       });
 
-      navigate("/dashboard");
+      navigate("/intern/dashboard");
     } catch (err: any) {
       const msg = err.message?.toLowerCase?.() || "";
       if (msg.includes("rate limit") || msg.includes("too many")) {
