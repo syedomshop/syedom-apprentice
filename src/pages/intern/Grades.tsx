@@ -54,7 +54,7 @@ const InternGrades = () => {
         <div>
           <h1 className="text-2xl font-semibold text-foreground">My Grades</h1>
           <p className="text-sm text-muted-foreground mt-1">
-            Grades appear here after admin uploads the grading file
+            Grades appear here after evaluation
           </p>
         </div>
 
