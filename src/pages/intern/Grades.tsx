@@ -78,7 +78,7 @@ const InternGrades = () => {
               </div>
             ) : grades.length === 0 ? (
               <div className="text-center py-12 text-muted-foreground">
-                <p className="text-sm">No grades yet. Grades will appear after admin reviews your submissions.</p>
+                <p className="text-sm">No grades yet. Grades will appear after evaluation.</p>
               </div>
             ) : (
               <div className="overflow-x-auto">
