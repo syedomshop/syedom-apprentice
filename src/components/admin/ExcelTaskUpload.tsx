@@ -16,7 +16,8 @@ interface ParsedTask {
   week: number;
   title: string;
   description: string;
-  expected_output: string;
+  task_file_url: string;
+  deadline: string;
   valid: boolean;
   error?: string;
 }
@@ -27,19 +28,13 @@ interface Props {
 }
 
 const COLUMN_MAP: Record<string, string> = {
-  role: "role",
-  field: "role",
-  week: "week",
-  week_number: "week",
-  "week number": "week",
-  title: "title",
-  "task title": "title",
-  "task name": "title",
-  description: "description",
-  "task description": "description",
-  "expected output": "expected_output",
-  expected_output: "expected_output",
-  deliverable: "expected_output",
+  role: "role", field: "role",
+  week: "week", week_number: "week", "week number": "week",
+  title: "title", task_title: "title", "task title": "title", "task name": "title",
+  description: "description", "task description": "description",
+  "expected output": "expected_output", expected_output: "expected_output", deliverable: "expected_output",
+  task_file_url: "task_file_url", "task file url": "task_file_url", "task file": "task_file_url", file_url: "task_file_url",
+  deadline: "deadline", due_date: "deadline", "due date": "deadline",
 };
 
 const ExcelTaskUpload = ({ batches, onUploaded }: Props) => {
@@ -63,14 +58,14 @@ const ExcelTaskUpload = ({ batches, onUploaded }: Props) => {
         const raw: Record<string, any>[] = XLSX.utils.sheet_to_json(ws, { defval: "" });
 
         if (raw.length === 0) {
-          toast({ title: "Empty file", description: "No rows found.", variant: "destructive" });
+          toast({ title: "Empty file", variant: "destructive" });
           return;
         }
 
         const colMapping: Record<string, string> = {};
-        Object.keys(raw[0]).forEach((originalKey) => {
-          const lower = originalKey.toLowerCase().trim();
-          if (COLUMN_MAP[lower]) colMapping[originalKey] = COLUMN_MAP[lower];
+        Object.keys(raw[0]).forEach((key) => {
+          const lower = key.toLowerCase().trim();
+          if (COLUMN_MAP[lower]) colMapping[key] = COLUMN_MAP[lower];
         });
 
         const tasks: ParsedTask[] = raw.map((row) => {
@@ -81,16 +76,17 @@ const ExcelTaskUpload = ({ batches, onUploaded }: Props) => {
 
           const week = parseInt(mapped.week);
           const errors: string[] = [];
-          if (!mapped.role) errors.push("Missing role/field");
+          if (!mapped.role) errors.push("Missing role");
           if (!mapped.title) errors.push("Missing title");
-          if (isNaN(week) || week < 1 || week > 8) errors.push("Invalid week (1-8)");
+          if (isNaN(week) || week < 1 || week > 12) errors.push("Invalid week (1-12)");
 
           return {
             role: mapped.role || "",
             week: isNaN(week) ? 0 : week,
             title: mapped.title || "",
             description: mapped.description || "",
-            expected_output: mapped.expected_output || "",
+            task_file_url: mapped.task_file_url || "",
+            deadline: mapped.deadline || "",
             valid: errors.length === 0,
             error: errors.length > 0 ? errors.join(", ") : undefined,
           };
@@ -98,7 +94,7 @@ const ExcelTaskUpload = ({ batches, onUploaded }: Props) => {
 
         setParsedTasks(tasks);
         const validCount = tasks.filter((t) => t.valid).length;
-        toast({ title: `Parsed ${tasks.length} rows`, description: `${validCount} valid, ${tasks.length - validCount} invalid` });
+        toast({ title: `Parsed ${tasks.length} rows`, description: `${validCount} valid` });
       } catch (err: any) {
         toast({ title: "Parse error", description: err.message, variant: "destructive" });
       }
@@ -119,20 +115,48 @@ const ExcelTaskUpload = ({ batches, onUploaded }: Props) => {
 
     setUploading(true);
     try {
-      const rows = valid.map((t) => ({
-        title: t.title,
-        description: t.description,
-        field: t.role,
-        week_number: t.week,
-        batch_id: batchId,
-        difficulty: t.week <= 3 ? "Beginner" : t.week <= 6 ? "Intermediate" : "Advanced",
-        deliverable: t.expected_output || null,
-      }));
+      // Fetch existing tasks for upsert matching (title + field)
+      const { data: existing } = await supabase.from("tasks").select("id, title, field").eq("batch_id", batchId);
+      const existingMap = new Map((existing || []).map(t => [`${t.title.toLowerCase()}||${t.field.toLowerCase()}`, t.id]));
 
-      const { error } = await supabase.from("tasks").insert(rows);
-      if (error) throw error;
+      let insertCount = 0;
+      let updateCount = 0;
 
-      toast({ title: "Tasks uploaded!", description: `${rows.length} tasks inserted.` });
+      for (const t of valid) {
+        const key = `${t.title.toLowerCase()}||${t.role.toLowerCase()}`;
+        const defaultDeadline = t.deadline
+          ? new Date(t.deadline).toISOString()
+          : new Date(Date.now() + 7 * 86400000).toISOString();
+
+        const taskData = {
+          title: t.title,
+          description: t.description,
+          field: t.role,
+          week_number: t.week,
+          batch_id: batchId,
+          difficulty: t.week <= 3 ? "Beginner" : t.week <= 6 ? "Intermediate" : "Advanced",
+          deliverable: t.description || null,
+          task_file_url: t.task_file_url || null,
+          deadline: defaultDeadline,
+        };
+
+        if (existingMap.has(key)) {
+          // Update existing task
+          const { error } = await supabase.from("tasks").update(taskData).eq("id", existingMap.get(key)!);
+          if (error) throw error;
+          updateCount++;
+        } else {
+          // Insert new task
+          const { error } = await supabase.from("tasks").insert(taskData);
+          if (error) throw error;
+          insertCount++;
+        }
+      }
+
+      toast({
+        title: "Tasks uploaded!",
+        description: `${insertCount} created, ${updateCount} updated.`,
+      });
       setParsedTasks([]);
       setFileName("");
       if (fileRef.current) fileRef.current.value = "";
@@ -157,7 +181,8 @@ const ExcelTaskUpload = ({ batches, onUploaded }: Props) => {
       </CardHeader>
       <CardContent className="space-y-4">
         <p className="text-xs text-muted-foreground">
-          Columns: <strong>Role</strong>, <strong>Week</strong>, <strong>Task Title</strong>, <strong>Task Description</strong>, <strong>Expected Output</strong>
+          Columns: <strong>Role</strong>, <strong>Week</strong>, <strong>Task Title</strong>, <strong>Description</strong>, <strong>Task File URL</strong>, <strong>Deadline</strong>.
+          If deadline is empty, defaults to 7 days from now. Uploading with same title + role will update existing tasks.
         </p>
 
         <div className="flex flex-wrap gap-3 items-end">
@@ -198,7 +223,7 @@ const ExcelTaskUpload = ({ batches, onUploaded }: Props) => {
                     <TableHead>Role</TableHead>
                     <TableHead>Week</TableHead>
                     <TableHead>Title</TableHead>
-                    <TableHead>Description</TableHead>
+                    <TableHead>Deadline</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -217,14 +242,14 @@ const ExcelTaskUpload = ({ batches, onUploaded }: Props) => {
                       <TableCell className="text-xs">{t.role}</TableCell>
                       <TableCell className="text-xs">{t.week || "—"}</TableCell>
                       <TableCell className="text-xs font-medium">{t.title}</TableCell>
-                      <TableCell className="text-xs max-w-[200px] truncate">{t.description}</TableCell>
+                      <TableCell className="text-xs">{t.deadline || "7 days (default)"}</TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
               </Table>
             </div>
 
-            <Button onClick={handleUpload} disabled={uploading || validCount === 0 || !batchId} className="w-full sm:w-auto">
+            <Button onClick={handleUpload} disabled={uploading || validCount === 0 || !batchId}>
               <Upload className="h-4 w-4 mr-2" />
               {uploading ? "Uploading..." : `Upload ${validCount} Tasks`}
             </Button>
