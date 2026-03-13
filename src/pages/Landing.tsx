@@ -172,29 +172,7 @@ const Landing = () => {
         </div>
       </section>
 
-      {/* Stats Banner */}
-      <section className="py-8 px-4 bg-primary/5 border-y border-border">
-        <div className="container mx-auto max-w-4xl">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-6 text-center">
-            <div>
-              <div className="text-2xl md:text-3xl font-bold text-foreground">{stats.enrolled}+</div>
-              <div className="text-sm text-muted-foreground">Total Enrolled</div>
-            </div>
-            <div>
-              <div className="text-2xl md:text-3xl font-bold text-primary">{stats.active}</div>
-              <div className="text-sm text-muted-foreground">Active Interns</div>
-            </div>
-            <div>
-              <div className="text-2xl md:text-3xl font-bold text-foreground">{stats.completed}</div>
-              <div className="text-sm text-muted-foreground">Completed</div>
-            </div>
-            <div>
-              <div className="text-2xl md:text-3xl font-bold text-foreground">{stats.batches}</div>
-              <div className="text-sm text-muted-foreground">Batches</div>
-            </div>
-          </div>
-        </div>
-      </section>
+
 
       {/* Roles */}
       <section id="roles" className="py-16 md:py-20 px-4 bg-muted/40">
