@@ -1,0 +1,162 @@
+You are a senior full-stack engineer. Your task is to **stabilize and prepare this repository for production deployment on Vercel**. The project currently works in Replit preview but fails after deployment on Vercel.
+
+Your goal is to **audit, fix, and refactor the codebase so it becomes a stable MVP deployment**.
+
+Follow these steps carefully.
+
+---
+
+1. ENVIRONMENT VARIABLES (CRITICAL)
+
+Ensure the app correctly reads environment variables in a Vite + React environment.
+
+All frontend variables must use the VITE_ prefix.
+
+Required variables:
+
+VITE_SUPABASE_URL
+VITE_SUPABASE_ANON_KEY
+VITE_GEMINI_API_KEY (if used)
+RESEND_API_KEY (if used)
+
+Tasks:
+
+• Ensure Supabase client initialization reads from `import.meta.env.VITE_SUPABASE_URL` and `import.meta.env.VITE_SUPABASE_ANON_KEY`.
+• Remove any use of `process.env` in frontend code.
+• Create `.env.example` showing required variables.
+• Add defensive error logging if env variables are missing.
+
+---
+
+2. SUPABASE CLIENT FIX
+
+Locate the Supabase client file (usually `supabaseClient.ts`, `lib/supabase.ts`, or similar).
+
+Ensure it follows this structure:
+
+const supabase = createClient(
+import.meta.env.VITE_SUPABASE_URL,
+import.meta.env.VITE_SUPABASE_ANON_KEY
+)
+
+Add logging if values are undefined.
+
+---
+
+3. FIX 401 AUTH / API ISSUES
+
+Audit all Supabase requests such as:
+
+/rest/v1/intern_profiles
+/rest/v1/submissions
+/rest/v1/batches
+
+Ensure the client is authenticated properly.
+
+Add error handling for:
+
+• 401 Unauthorized
+• invalid token
+• session expiration
+
+Make sure auth sessions persist across refresh.
+
+---
+
+4. ADD VERCEL DEPLOYMENT COMPATIBILITY
+
+Create a `vercel.json` file in the root directory to support SPA routing.
+
+Configuration should route all paths to index.html to prevent refresh 404 errors.
+
+Ensure compatibility with React Router.
+
+---
+
+5. BUILD CONFIGURATION
+
+Ensure Vite build output works correctly with Vercel.
+
+Confirm:
+
+Build Command: npm run build
+Output Directory: dist
+
+Remove any configuration that conflicts with Vercel serverless environment.
+
+---
+
+6. REMOVE OR DISABLE UNSTABLE FEATURES
+
+Temporarily disable any systems that could break the MVP if they fail:
+
+• Gemini AI grading
+• automated email flows
+• experimental AI features
+
+The MVP should only require:
+
+• Authentication
+• Dashboard loading
+• Internship roles
+• Task submission
+• Admin viewing submissions
+
+All other features should fail gracefully if API keys are missing.
+
+---
+
+7. ADD PRODUCTION ERROR LOGGING
+
+Add console logging for:
+
+• Supabase initialization
+• authentication failures
+• API request failures
+• missing environment variables
+
+These logs must appear in browser console for debugging.
+
+---
+
+8. CLEAN PROJECT STRUCTURE
+
+Ensure the repo structure is clear:
+
+/src
+/components
+/pages
+/lib
+/services
+
+Move Supabase logic to `/lib/supabase.ts`.
+
+Remove unused files and broken imports.
+
+---
+
+9. FINAL TEST
+
+After fixes, confirm the following flows work without error:
+
+• User signup
+• User login
+• Dashboard loads
+• Fetching intern_profiles works
+• Fetching submissions works
+• App reload does NOT produce 404 errors
+
+---
+
+FINAL GOAL:
+
+A **stable Vercel-ready MVP** where:
+
+• The app deploys successfully
+• Supabase authentication works
+• Dashboard loads without 401 errors
+• No crashes occur on page refresh
+
+Do not rewrite the entire application. Only **fix configuration, environment handling, and deployment compatibility**.
+
+Provide a summary of all fixes made.

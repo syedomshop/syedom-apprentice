@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from "react";
-import { Session, User } from "@supabase/supabase-js";
+import { Session, User, AuthError } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabaseClient";
 import { clearUserCache } from "@/lib/cache";
 
@@ -30,12 +30,25 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [loading, setLoading] = useState(true);
 
   const fetchProfile = async (userId: string) => {
-    const { data: profile } = await supabase
-      .from("intern_profiles")
-      .select("*")
-      .eq("user_id", userId)
-      .maybeSingle();
-    setInternProfile(profile);
+    try {
+      const { data: profile, error } = await supabase
+        .from("intern_profiles")
+        .select("*")
+        .eq("user_id", userId)
+        .maybeSingle();
+
+      if (error) {
+        if (error.code === "PGRST301" || error.message?.includes("JWT")) {
+          console.warn("[Auth] Session expired or invalid token — signing out");
+          await supabase.auth.signOut();
+          return;
+        }
+        console.error("[Auth] fetchProfile error:", error.message, error.code);
+      }
+      setInternProfile(profile || null);
+    } catch (err) {
+      console.error("[Auth] fetchProfile unexpected error:", err);
+    }
   };
 
   const refreshProfile = async () => {
@@ -43,37 +56,72 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   useEffect(() => {
+    let initialised = false;
+
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (_event, session) => {
+      async (event, session) => {
+        console.log("[Auth] State change:", event, session?.user?.email || "no user");
+
+        if (event === "TOKEN_REFRESHED") {
+          console.log("[Auth] Token refreshed successfully");
+        }
+
+        if (event === "SIGNED_OUT" || (!session && event !== "INITIAL_SESSION")) {
+          setSession(null);
+          setUser(null);
+          setInternProfile(null);
+          setLoading(false);
+          return;
+        }
+
         setSession(session);
         setUser(session?.user ?? null);
+
         if (session?.user) {
           setTimeout(() => fetchProfile(session.user.id), 0);
         } else {
           setInternProfile(null);
         }
-        setLoading(false);
+
+        if (!initialised) {
+          setLoading(false);
+          initialised = true;
+        }
       }
     );
 
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    // Get the current session on mount to handle page refreshes
+    supabase.auth.getSession().then(({ data: { session }, error }) => {
+      if (error) {
+        console.error("[Auth] getSession error:", error.message);
+        setLoading(false);
+        return;
+      }
       setSession(session);
       setUser(session?.user ?? null);
       if (session?.user) {
         fetchProfile(session.user.id);
       }
-      setLoading(false);
+      if (!initialised) {
+        setLoading(false);
+        initialised = true;
+      }
     });
 
     return () => subscription.unsubscribe();
   }, []);
 
   const signOut = async () => {
-    clearUserCache();
-    await supabase.auth.signOut();
-    setSession(null);
-    setUser(null);
-    setInternProfile(null);
+    try {
+      clearUserCache();
+      await supabase.auth.signOut();
+    } catch (err) {
+      console.error("[Auth] signOut error:", err);
+    } finally {
+      setSession(null);
+      setUser(null);
+      setInternProfile(null);
+    }
   };
 
   return (
