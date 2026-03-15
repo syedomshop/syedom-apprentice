@@ -14,13 +14,10 @@ A React + Supabase internship management platform for Syedom Labs. Interns can r
 - Intern registration with seat-limit enforcement and waitlist
 - Role-based routing: interns → `/intern/*`, admins → `/admin/*`
 - AI-powered task generation (Gemini API) via Supabase edge function
-- AI grading system (`ai-grade-submissions` edge function) with pending/approve/reject review flow
-- `ai_grading_results` table stores AI results before admin approval; approved results write to `grades`
+- AI grading of submissions via Supabase edge function
 - Offer letter emails + confirmation via Resend API (Supabase edge functions)
-- Email confirmation sent to intern on assignment submission
 - Certificate issuance on completion
-- Admin dashboard: interns, batches, tasks, submissions (with stats), grading (with missing-intern validation), AI grading, notifications
-- Full routing: `/admin/batches`, `/admin/notifications`, `/admin/ai-grading`, `/admin/interns/:id`
+- Admin dashboard: interns, tasks, submissions, grading, notifications, batches
 
 ## Project Structure
 ```
@@ -42,8 +39,7 @@ supabase/
   migrations/              — Incremental SQL migrations
   functions/               — Edge functions (Deno): send-confirmation,
                              process-pending-offers, generate-tasks,
-                             grade-submission, send-admin-notification,
-                             ai-grade-submissions (new)
+                             grade-submission, send-admin-notification
 ```
 
 ## Environment Variables
