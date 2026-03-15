@@ -46,19 +46,43 @@ const Register = () => {
     if (loading) return;
     setLoading(true);
 
+    console.log("[Register] Starting registration for:", form.email);
+
     try {
-      // 1. Check seat availability
-      const { data: seatCheck } = await supabase.rpc("check_seat_available");
-      if (!seatCheck) {
-        toast({ title: "Applications closed", description: "This batch is full. You've been added to the waitlist.", variant: "destructive" });
-        await supabase.from("waitlist").insert({ name: form.name, email: form.email, field: form.field });
+      // 1. Check seat availability (SECURITY DEFINER — works without auth)
+      let seatAvailable = true;
+      try {
+        const { data: seatCheck, error: seatErr } = await supabase.rpc("check_seat_available");
+        if (seatErr) {
+          console.warn("[Register] Seat check error (ignoring):", seatErr.message);
+        } else {
+          seatAvailable = seatCheck !== false;
+        }
+      } catch (_) {
+        console.warn("[Register] Seat check failed — continuing");
+      }
+
+      if (!seatAvailable) {
+        toast({
+          title: "Applications closed",
+          description: "This batch is full. You've been added to the waitlist.",
+          variant: "destructive",
+        });
+        try {
+          await supabase.from("waitlist").insert({
+            name: form.name,
+            email: form.email,
+            field: form.field,
+          });
+        } catch (_) {}
         setLoading(false);
         return;
       }
 
-      // 2. Sign up
+      // 2. Sign up (creates auth user and establishes session)
+      console.log("[Register] Calling supabase.auth.signUp...");
       const { data: authData, error: authError } = await supabase.auth.signUp({
-        email: form.email,
+        email: form.email.trim().toLowerCase(),
         password: form.password,
         options: {
           emailRedirectTo: window.location.origin,
@@ -67,12 +91,17 @@ const Register = () => {
       });
 
       if (authError) {
+        console.error("[Register] Auth signup error:", authError.message, authError.status);
         if (authError.message?.toLowerCase().includes("rate limit") || authError.status === 429) {
           toast({ title: "Too many attempts", description: "Please wait a few minutes before trying again.", variant: "destructive" });
           setLoading(false);
           return;
         }
-        if (authError.message?.toLowerCase().includes("already registered") || authError.message?.toLowerCase().includes("already been registered")) {
+        if (
+          authError.message?.toLowerCase().includes("already registered") ||
+          authError.message?.toLowerCase().includes("already been registered") ||
+          authError.message?.toLowerCase().includes("user already registered")
+        ) {
           toast({ title: "Account exists", description: "This email is already registered. Try signing in instead.", variant: "destructive" });
           setLoading(false);
           return;
@@ -80,7 +109,11 @@ const Register = () => {
         throw authError;
       }
 
-      if (!authData.user) throw new Error("Signup failed — please try again");
+      if (!authData.user) {
+        throw new Error("Signup failed — no user returned. Please try again.");
+      }
+
+      console.log("[Register] Auth user created:", authData.user.id);
 
       const userId = authData.user.id;
       const internId = `SL-${Date.now().toString(36).toUpperCase().slice(-6)}`;
@@ -88,38 +121,66 @@ const Register = () => {
       startDate.setDate(startDate.getDate() + 7);
       const startDateStr = startDate.toISOString().split("T")[0];
 
-      // 3. Get active batch
-      const { data: activeBatch } = await supabase.rpc("get_active_batch");
+      // 3. Get active batch (SECURITY DEFINER — works without auth)
+      let activeBatch: string | null = null;
+      try {
+        const { data: batchId } = await supabase.rpc("get_active_batch");
+        activeBatch = batchId || null;
+      } catch (_) {
+        console.warn("[Register] get_active_batch failed — continuing without batch");
+      }
 
       // 4. Create intern profile
+      // NOTE: This requires RLS policy "Users can insert own profile" to exist in Supabase
+      console.log("[Register] Creating intern profile...");
       const { error: profileError } = await supabase.from("intern_profiles").insert({
         user_id: userId,
         name: form.name,
         username: form.username,
-        email: form.email,
+        email: form.email.trim().toLowerCase(),
         intern_id: internId,
         field: form.field,
         github_username: form.github_username || null,
-        batch_id: activeBatch || null,
+        batch_id: activeBatch,
         start_date: startDateStr,
       });
 
       if (profileError) {
-        if (profileError.message?.includes("duplicate") || profileError.message?.includes("unique")) {
-          toast({ title: "Profile conflict", description: "This username or email is already taken. Try a different one.", variant: "destructive" });
+        console.error("[Register] Profile insert error:", profileError.message, profileError.code);
+        if (profileError.message?.includes("duplicate") || profileError.message?.includes("unique") || profileError.code === "23505") {
+          toast({
+            title: "Profile conflict",
+            description: "This username or email is already taken. Try a different one.",
+            variant: "destructive",
+          });
+          setLoading(false);
+          return;
+        }
+        if (profileError.message?.includes("policy") || profileError.code === "42501") {
+          toast({
+            title: "Permission error",
+            description: "Unable to create profile — please contact support.",
+            variant: "destructive",
+          });
           setLoading(false);
           return;
         }
         throw profileError;
       }
 
-      // 5. Assign role
-      await supabase.from("user_roles").insert({ user_id: userId, role: "intern" });
+      console.log("[Register] Profile created. Assigning intern role...");
+
+      // 5. Assign role (fire-and-forget — don't block on this)
+      supabase.from("user_roles").insert({ user_id: userId, role: "intern" }).then(({ error }) => {
+        if (error) console.warn("[Register] Role insert error (non-fatal):", error.message);
+      });
 
       // 6. Send confirmation email (fire-and-forget)
       supabase.functions.invoke("send-confirmation", {
         body: { name: form.name, email: form.email, field: form.field, intern_id: internId },
       }).catch(() => {});
+
+      console.log("[Register] Registration complete. Intern ID:", internId);
 
       toast({
         title: "Application submitted!",
@@ -128,11 +189,12 @@ const Register = () => {
 
       navigate("/intern/dashboard");
     } catch (err: any) {
+      console.error("[Register] Unexpected error:", err);
       const msg = err.message?.toLowerCase?.() || "";
       if (msg.includes("rate limit") || msg.includes("too many")) {
         toast({ title: "Too many attempts", description: "Please wait a few minutes before trying again.", variant: "destructive" });
       } else {
-        toast({ title: "Registration failed", description: err.message, variant: "destructive" });
+        toast({ title: "Registration failed", description: err.message || "Unknown error", variant: "destructive" });
       }
     } finally {
       setLoading(false);
@@ -161,21 +223,59 @@ const Register = () => {
             <form onSubmit={handleRegister} className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="name">Full Name</Label>
-                <Input id="name" placeholder="John Doe" value={form.name} onChange={(e) => updateField("name", e.target.value)} required />
+                <Input
+                  id="name"
+                  data-testid="input-name"
+                  placeholder="John Doe"
+                  value={form.name}
+                  onChange={(e) => updateField("name", e.target.value)}
+                  required
+                />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="username">Username</Label>
-                <Input id="username" placeholder="johndoe" value={form.username} onChange={(e) => updateField("username", e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ""))} required minLength={3} />
+                <Input
+                  id="username"
+                  data-testid="input-username"
+                  placeholder="johndoe"
+                  value={form.username}
+                  onChange={(e) => updateField("username", e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ""))}
+                  required
+                  minLength={3}
+                />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="email">Email</Label>
-                <Input id="email" type="email" placeholder="you@example.com" value={form.email} onChange={(e) => updateField("email", e.target.value)} required />
+                <Input
+                  id="email"
+                  data-testid="input-email"
+                  type="email"
+                  placeholder="you@example.com"
+                  value={form.email}
+                  onChange={(e) => updateField("email", e.target.value)}
+                  required
+                  autoComplete="email"
+                />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="password">Password</Label>
                 <div className="relative">
-                  <Input id="password" type={showPassword ? "text" : "password"} placeholder="••••••••" value={form.password} onChange={(e) => updateField("password", e.target.value)} required minLength={8} />
-                  <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
+                  <Input
+                    id="password"
+                    data-testid="input-password"
+                    type={showPassword ? "text" : "password"}
+                    placeholder="••••••••"
+                    value={form.password}
+                    onChange={(e) => updateField("password", e.target.value)}
+                    required
+                    minLength={8}
+                    autoComplete="new-password"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                  >
                     {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                   </button>
                 </div>
@@ -183,7 +283,9 @@ const Register = () => {
               <div className="space-y-2">
                 <Label>Internship Role</Label>
                 <Select value={form.field} onValueChange={(v) => updateField("field", v)} required>
-                  <SelectTrigger><SelectValue placeholder="Select your role" /></SelectTrigger>
+                  <SelectTrigger data-testid="select-field">
+                    <SelectValue placeholder="Select your role" />
+                  </SelectTrigger>
                   <SelectContent>
                     {ROLES.map((r) => (
                       <SelectItem key={r} value={r}>{r}</SelectItem>
@@ -194,7 +296,9 @@ const Register = () => {
               <div className="space-y-2">
                 <Label>Experience Level</Label>
                 <Select value={form.experience_level} onValueChange={(v) => updateField("experience_level", v)}>
-                  <SelectTrigger><SelectValue placeholder="Select your level" /></SelectTrigger>
+                  <SelectTrigger data-testid="select-experience">
+                    <SelectValue placeholder="Select your level" />
+                  </SelectTrigger>
                   <SelectContent>
                     {LEVELS.map((l) => (
                       <SelectItem key={l.value} value={l.value}>{l.label}</SelectItem>
@@ -203,7 +307,10 @@ const Register = () => {
                 </Select>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="experience_desc">Tell us about your experience <span className="text-muted-foreground">(optional)</span></Label>
+                <Label htmlFor="experience_desc">
+                  Tell us about your experience{" "}
+                  <span className="text-muted-foreground">(optional)</span>
+                </Label>
                 <Textarea
                   id="experience_desc"
                   placeholder="Share your background, projects you've worked on, or what you hope to learn..."
@@ -214,11 +321,24 @@ const Register = () => {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="github">GitHub Username <span className="text-muted-foreground">(optional)</span></Label>
-                <Input id="github" placeholder="johndoe" value={form.github_username} onChange={(e) => updateField("github_username", e.target.value.replace(/[^a-zA-Z0-9_-]/g, ""))} />
+                <Label htmlFor="github">
+                  GitHub Username{" "}
+                  <span className="text-muted-foreground">(optional)</span>
+                </Label>
+                <Input
+                  id="github"
+                  placeholder="johndoe"
+                  value={form.github_username}
+                  onChange={(e) => updateField("github_username", e.target.value.replace(/[^a-zA-Z0-9_-]/g, ""))}
+                />
               </div>
               <ResumeUploader onExtracted={(text) => updateField("resume_text", text)} />
-              <Button type="submit" className="w-full" disabled={loading}>
+              <Button
+                type="submit"
+                className="w-full"
+                disabled={loading}
+                data-testid="button-submit"
+              >
                 {loading ? "Submitting..." : "Submit Application"}
               </Button>
             </form>

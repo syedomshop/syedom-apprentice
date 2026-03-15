@@ -20,25 +20,33 @@ const InternDashboard = () => {
   const profileId = internProfile?.id;
 
   useEffect(() => {
-    if (!profileId) return;
-    const fetch = async () => {
+    if (!profileId) {
+      setLoading(false);
+      return;
+    }
+
+    const fetchData = async () => {
       try {
-        const [
-          { data: tasks },
-          { data: subs },
-          { data: grades },
-        ] = await Promise.all([
-          supabase.from("intern_tasks").select("*, tasks(*)").eq("intern_id", profileId).order("assigned_date", { ascending: false }),
+        const [tasksRes, subsRes, gradesRes] = await Promise.all([
+          supabase
+            .from("intern_tasks")
+            .select("*, tasks(*)")
+            .eq("intern_id", profileId)
+            .order("assigned_date", { ascending: false }),
           supabase.from("submissions").select("*").eq("intern_id", profileId),
           supabase.from("grades").select("score").eq("intern_id", profileId),
         ]);
 
-        const allTasks = tasks || [];
-        const allSubs = subs || [];
-        const allGrades = grades || [];
-        const submittedIds = new Set(allSubs.map(s => s.task_id));
+        if (tasksRes.error) console.warn("[Intern Dashboard] tasks error:", tasksRes.error.message);
+        if (subsRes.error) console.warn("[Intern Dashboard] submissions error:", subsRes.error.message);
+        if (gradesRes.error) console.warn("[Intern Dashboard] grades error:", gradesRes.error.message);
+
+        const allTasks = tasksRes.data || [];
+        const allSubs = subsRes.data || [];
+        const allGrades = gradesRes.data || [];
+        const submittedIds = new Set(allSubs.map((s: any) => s.task_id));
         const avgScore = allGrades.length
-          ? Math.round(allGrades.reduce((a, g) => a + g.score, 0) / allGrades.length)
+          ? Math.round(allGrades.reduce((a: number, g: any) => a + (g.score || 0), 0) / allGrades.length)
           : 0;
 
         setStats({
@@ -49,12 +57,13 @@ const InternDashboard = () => {
         });
         setRecentTasks(allTasks.slice(0, 5));
       } catch (err) {
-        console.error(err);
+        console.error("[Intern Dashboard] Unexpected error:", err);
       } finally {
         setLoading(false);
       }
     };
-    fetch();
+
+    fetchData();
   }, [profileId]);
 
   const getDeadlineInfo = (task: any) => {

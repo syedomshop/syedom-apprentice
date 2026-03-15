@@ -1,0 +1,88 @@
+You are a senior full-stack engineer with expertise in Vite + React + Supabase + Vercel.
+
+Your task is to fix all authentication issues in this repository so the app becomes a fully functional MVP deployed on Vercel, where the Vercel-Supabase integration is already installed.
+
+Currently:
+
+Supabase client initializes correctly
+
+Vercel integration syncs env variables automatically
+
+Dashboard and tables exist
+
+Login attempts return 401 Unauthorized
+
+Focus only on fixing authentication, session persistence, and login/signup flow. Do not add new features.
+
+1️⃣ Supabase Client
+
+Ensure the Supabase client uses import.meta.env.VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY.
+
+Client initialization must include:
+
+import { createClient } from '@supabase/supabase-js'
+
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
+const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY
+
+export const supabase = createClient(supabaseUrl, supabaseKey, {
+  persistSession: true,
+  autoRefreshToken: true,
+  detectSessionInUrl: true
+})
+
+Add console logging for URL, key, and session state for debugging.
+
+2️⃣ Login & Signup Fix
+
+Ensure signInWithPassword is called correctly:
+
+const { data, error } = await supabase.auth.signInWithPassword({
+  email: emailInput,
+  password: passwordInput
+})
+if (error) console.error('Login error:', error)
+else console.log('Logged in user:', data.user)
+
+Check that credentials are defined before calling login.
+
+Ensure signup flow works and email confirmation is handled for MVP testing (either auto-confirm or disable confirmation temporarily).
+
+Ensure admin users can log in and access their dashboard.
+
+3️⃣ Session Persistence
+
+Ensure sessions persist after page refresh.
+
+Ensure tokens auto-refresh if expired.
+
+Handle INITIAL_SESSION state properly so the app knows when no user is logged in.
+
+4️⃣ RLS / Database Access
+
+Ensure Supabase Row Level Security policies allow users to read their own profile, submissions, and batches.
+
+For MVP testing, using(true) policies for select are acceptable.
+
+Wrap all API calls in try/catch to prevent crashes if RLS blocks access.
+
+5️⃣ Testing Flow
+
+After fixes, confirm the following:
+
+Signup new user works
+
+Login as new user works
+
+Login as existing admin works
+
+Dashboard loads without 401 errors
+
+Supabase queries succeed (intern_profiles, submissions, batches)
+
+Session persists after page refresh
+
+Important: Only fix auth, session, and login/signup flow.
+Do not add new features or touch environment variables (Vercel integration handles them).
+
+Provide a summary of all changes made.

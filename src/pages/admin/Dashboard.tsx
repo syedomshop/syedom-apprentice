@@ -1,46 +1,53 @@
 import { useEffect, useState } from "react";
 import AdminLayout from "@/components/layout/AdminLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { supabase } from "@/lib/supabaseClient";
+import { supabase, handleSupabaseResult } from "@/lib/supabaseClient";
 import { cn } from "@/lib/utils";
-import { Users, BookOpen, FileText, Star } from "lucide-react";
+import { Users, BookOpen, FileText, Star, AlertTriangle } from "lucide-react";
 
 const AdminDashboard = () => {
   const [stats, setStats] = useState({ interns: 0, tasks: 0, submissions: 0, avgScore: 0 });
   const [loading, setLoading] = useState(true);
+  const [rlsWarning, setRlsWarning] = useState(false);
 
   useEffect(() => {
-    const fetch = async () => {
+    const fetchStats = async () => {
       try {
-        const [
-          { count: interns },
-          { count: tasks },
-          { count: submissions },
-          { data: grades },
-        ] = await Promise.all([
+        const [internsRes, tasksRes, submissionsRes, gradesRes] = await Promise.all([
           supabase.from("intern_profiles").select("*", { count: "exact", head: true }),
           supabase.from("tasks").select("*", { count: "exact", head: true }),
           supabase.from("submissions").select("*", { count: "exact", head: true }),
           supabase.from("grades").select("score"),
         ]);
 
-        const avg = grades?.length
-          ? Math.round(grades.reduce((a, g) => a + g.score, 0) / grades.length)
+        // Log each error for debugging
+        if (internsRes.error) console.warn("[Admin] intern_profiles query error:", internsRes.error.message);
+        if (tasksRes.error) console.warn("[Admin] tasks query error:", tasksRes.error.message);
+        if (submissionsRes.error) console.warn("[Admin] submissions query error:", submissionsRes.error.message);
+        if (gradesRes.error) console.warn("[Admin] grades query error:", gradesRes.error.message);
+
+        // If any query returns 0 due to missing admin RLS policies, warn the user
+        const anyError = internsRes.error || tasksRes.error || submissionsRes.error || gradesRes.error;
+        if (anyError) setRlsWarning(true);
+
+        const grades = gradesRes.data || [];
+        const avg = grades.length
+          ? Math.round(grades.reduce((a: number, g: any) => a + (g.score || 0), 0) / grades.length)
           : 0;
 
         setStats({
-          interns: interns || 0,
-          tasks: tasks || 0,
-          submissions: submissions || 0,
+          interns: internsRes.count || 0,
+          tasks: tasksRes.count || 0,
+          submissions: submissionsRes.count || 0,
           avgScore: avg,
         });
       } catch (err) {
-        console.error(err);
+        console.error("[Admin] Dashboard fetch error:", err);
       } finally {
         setLoading(false);
       }
     };
-    fetch();
+    fetchStats();
   }, []);
 
   const cards = [
@@ -67,6 +74,19 @@ const AdminDashboard = () => {
           <h1 className="text-2xl font-bold text-foreground">Admin Dashboard</h1>
           <p className="text-muted-foreground text-sm mt-1">Overview of the internship program</p>
         </div>
+
+        {rlsWarning && (
+          <div className="flex items-start gap-3 p-4 rounded-lg bg-warning/10 border border-warning/30 text-warning-foreground">
+            <AlertTriangle className="h-5 w-5 text-warning mt-0.5 flex-shrink-0" />
+            <div className="text-sm">
+              <p className="font-semibold text-warning">Database permissions not yet configured</p>
+              <p className="text-muted-foreground mt-1">
+                Run <code className="bg-muted px-1 rounded text-xs">supabase/migrations/20260315_fix_admin_rls_and_schema.sql</code> in
+                your Supabase dashboard SQL editor to grant admin access to all tables.
+              </p>
+            </div>
+          </div>
+        )}
 
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           {cards.map((card) => (
