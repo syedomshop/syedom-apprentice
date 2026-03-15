@@ -1,26 +1,31 @@
-const computeDeadline = (weekNumber: number | null, batchDate?: string) => {
-  if (!weekNumber) return null;
+// computeDeadline.ts
+export const computeDeadline = (weekNumber: number | null, batchStartDate?: string) => {
+  if (!weekNumber || !batchStartDate) return null;
 
-  // Use provided batchDate or fallback to active batch start date
-  const dateStr = batchDate || activeBatch?.start_date;
-  if (!dateStr) return null;
-
-  // Normalize date string
   let start: Date;
-  if (dateStr.includes("/")) { // MM/DD/YYYY
-    const [month, day, year] = dateStr.split("/").map(Number);
+
+  // Flexible date parsing
+  if (batchStartDate.includes("/")) {
+    // MM/DD/YYYY
+    const [month, day, year] = batchStartDate.split("/").map(Number);
     start = new Date(year, month - 1, day);
-  } else if (dateStr.includes("-")) { // MM-DD-YYYY or YYYY-MM-DD
-    const parts = dateStr.split("-").map(Number);
-    if (parts[0] > 31) { // assume YYYY-MM-DD
+  } else if (batchStartDate.includes("-")) {
+    // MM-DD-YYYY or YYYY-MM-DD
+    const parts = batchStartDate.split("-").map(Number);
+    if (parts[0] > 31) {
+      // YYYY-MM-DD
       start = new Date(parts[0], parts[1] - 1, parts[2]);
-    } else { // MM-DD-YYYY
+    } else {
+      // MM-DD-YYYY
       start = new Date(parts[2], parts[0] - 1, parts[1]);
     }
   } else {
-    start = new Date(dateStr); // fallback for ISO format
+    // fallback for ISO or unknown format
+    start = new Date(batchStartDate);
   }
 
-  start.setDate(start.getDate() + (weekNumber - 1) * 7); // Week 1 = start date
+  // Add week offset (Week 1 = start date)
+  start.setDate(start.getDate() + (weekNumber - 1) * 7);
+
   return start.toISOString();
 };
