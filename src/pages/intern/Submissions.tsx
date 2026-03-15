@@ -20,17 +20,33 @@ const InternSubmissions = () => {
   const [repoLink, setRepoLink] = useState("");
   const [comment, setComment] = useState("");
   const [loading, setLoading] = useState(false);
+  const [activeBatch, setActiveBatch] = useState<any>(null);
   const { toast } = useToast();
   const profileId = internProfile?.id;
 
   const fetchData = async () => {
     if (!profileId) return;
-    const [{ data: taskData }, { data: subData }] = await Promise.all([
-      supabase.from("intern_tasks").select("*, tasks(*)").eq("intern_id", profileId),
-      supabase.from("submissions").select("*, tasks(title, deadline)").eq("intern_id", profileId).order("created_at", { ascending: false }),
-    ]);
-    setTasks(taskData || []);
-    setSubmissions(subData || []);
+
+    try {
+      // 1️⃣ Fetch active batch
+      const { data: batchData } = await supabase
+        .from("batches")
+        .select("*")
+        .eq("is_active", true)
+        .single();
+      setActiveBatch(batchData);
+
+      // 2️⃣ Fetch tasks and submissions
+      const [{ data: taskData }, { data: subData }] = await Promise.all([
+        supabase.from("intern_tasks").select("*, tasks(*)").eq("intern_id", profileId),
+        supabase.from("submissions").select("*, tasks(title, week_number)").eq("intern_id", profileId).order("created_at", { ascending: false }),
+      ]);
+
+      setTasks(taskData || []);
+      setSubmissions(subData || []);
+    } catch (err) {
+      console.error(err);
+    }
   };
 
   useEffect(() => { fetchData(); }, [profileId]);
@@ -38,6 +54,32 @@ const InternSubmissions = () => {
   // Filter out already-submitted tasks
   const submittedTaskIds = new Set(submissions.map(s => s.task_id));
   const availableTasks = tasks.filter(t => !submittedTaskIds.has(t.task_id));
+
+  // Flexible date parser
+  const parseDate = (dateStr: string | null) => {
+    if (!dateStr) return null;
+    if (dateStr.includes("/")) { // MM/DD/YYYY
+      const [month, day, year] = dateStr.split("/").map(Number);
+      return new Date(year, month - 1, day);
+    } else if (dateStr.includes("-")) { // MM-DD-YYYY or YYYY-MM-DD
+      const parts = dateStr.split("-").map(Number);
+      if (parts[0] > 31) { // assume YYYY-MM-DD
+        return new Date(parts[0], parts[1] - 1, parts[2]);
+      } else { // MM-DD-YYYY
+        return new Date(parts[2], parts[0] - 1, parts[1]);
+      }
+    }
+    return new Date(dateStr); // fallback
+  };
+
+  // Compute dynamic deadline based on batch start date
+  const computeDeadline = (weekNumber: number | null) => {
+    if (!weekNumber || !activeBatch?.start_date) return null;
+    const start = parseDate(activeBatch.start_date);
+    if (!start) return null;
+    start.setDate(start.getDate() + (weekNumber - 1) * 7);
+    return start;
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -48,13 +90,10 @@ const InternSubmissions = () => {
 
     setLoading(true);
     try {
-      // Determine timeliness
       const selectedTask = tasks.find(t => t.task_id === taskId);
-      const deadline = selectedTask?.tasks?.deadline;
+      const deadlineDate = computeDeadline(selectedTask?.tasks?.week_number);
       let timeliness = "on_time";
-      if (deadline && new Date() > new Date(deadline)) {
-        timeliness = "late";
-      }
+      if (deadlineDate && new Date() > deadlineDate) timeliness = "late";
 
       const { error } = await supabase.from("submissions").insert({
         intern_id: profileId,
@@ -65,10 +104,14 @@ const InternSubmissions = () => {
       });
       if (error) throw error;
 
-      // Mark task as completed
+      // Update task status
       await supabase.from("intern_tasks").update({ status: "completed" }).eq("intern_id", profileId).eq("task_id", taskId);
 
-      toast({ title: "Submitted!", description: timeliness === "late" ? "Submission marked as late (past deadline)." : "Submission received on time." });
+      toast({
+        title: "Submitted!",
+        description: timeliness === "late" ? "Submission marked as late (past deadline)." : "Submission received on time."
+      });
+
       setTaskId("");
       setRepoLink("");
       setComment("");
