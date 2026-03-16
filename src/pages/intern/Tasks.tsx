@@ -24,47 +24,17 @@ const InternTasks = () => {
   }, []);
 
   useEffect(() => {
-    if (!profileId || !internProfile?.field) return;
+    if (!profileId) return;
 
     const fetchTasks = async () => {
       try {
-        let { data, error } = await supabase
+        const { data, error } = await supabase
           .from("intern_tasks")
           .select("*, tasks(*)")
           .eq("intern_id", profileId)
           .order("assigned_date", { ascending: true });
 
         if (error) throw error;
-
-        // Auto assign tasks if none exist
-        if (!data || data.length === 0) {
-          const { data: available, error: taskError } = await supabase
-            .from("tasks")
-            .select("id")
-            .eq("field", internProfile.field);
-
-          if (taskError) throw taskError;
-
-          if (available && available.length > 0) {
-            await supabase
-              .from("intern_tasks")
-              .upsert(
-                available.map((t) => ({
-                  intern_id: profileId,
-                  task_id: t.id,
-                })),
-                { onConflict: "intern_id,task_id" }
-              );
-
-            const { data: refreshed } = await supabase
-              .from("intern_tasks")
-              .select("*, tasks(*)")
-              .eq("intern_id", profileId)
-              .order("assigned_date", { ascending: true });
-
-            data = refreshed;
-          }
-        }
 
         // fetch submissions
         const { data: subs } = await supabase
@@ -88,7 +58,7 @@ const InternTasks = () => {
     };
 
     fetchTasks();
-  }, [profileId, internProfile?.field]);
+  }, [profileId, startDate]);
 
   // Calculate deadline based on week number
   const calculateDeadline = (week: number) => {
@@ -154,14 +124,12 @@ const InternTasks = () => {
           <div className="grid gap-4">
             {tasks.map((it) => {
               const week = it.tasks?.week_number ?? 1;
-
               const deadline = calculateDeadline(week);
               const countdown = getCountdown(deadline);
 
               return (
                 <Card key={`${it.intern_id}-${it.task_id}`}>
                   <CardContent className="p-5 space-y-3">
-
                     <div className="flex items-start justify-between gap-4">
                       <div className="flex-1 space-y-2">
 
@@ -191,6 +159,7 @@ const InternTasks = () => {
                             {it.tasks.deliverable}
                           </p>
                         )}
+
                       </div>
                     </div>
 
